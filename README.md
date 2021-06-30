@@ -1,14 +1,34 @@
-# Project
+## Red Dog Retail Demo - Azure Application Innovation Scenario
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+### Background
 
-As the maintainer of this project, please make a few updates:
+This demo/workshop is being created to help show the value of the Azure App Innovation and hybrid cloud story. This includes Azure Arc for Kubernetes, Arc Enabled Services, Azure Kubernetes Service, Dapr, and the overall value of the Azure PaaS story. The application is designed with a polyglot microservices and event driven architecture. 
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+The business scenario is a Retail operation with applications that run in a branch office as well as Corporate. These branch stores can run in Azure or in a hybrid scenario with local compute with a connection to the cloud. If there is a loss of network connectivity, they still need to be able to process orders locally in each store. 
+
+### Architecture Diagrams
+
+Application Architecture
+
+![Application architecture diagram](assets/architecture.png)
+
+### Contents
+
+This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the source code is maintained. 
+
+### Folder structure
+
+    /arc
+      Manifests and charts for Arc managed configs
+      
+    /assets
+      Items relating to this readme, i.e. images, diagrams
+
+    /docs
+      Documentation markdown
+
+    /infra
+      Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop
 
 ## Contributing
 
