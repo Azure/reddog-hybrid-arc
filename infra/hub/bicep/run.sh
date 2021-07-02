@@ -27,7 +27,7 @@ export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 
 export PREFIX=$(cat infra.json|jq -r '.hub.rgName')
 export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
-export RG_NAME=$PREFIX-hub-$RG_LOCATION
+export RG_NAME=reddog-$PREFIX-hub-$RG_LOCATION
 
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)

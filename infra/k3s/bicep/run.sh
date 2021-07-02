@@ -28,7 +28,8 @@ for branch in $(cat infra.json|jq -c '.branches[]')
 do
 export PREFIX=$(echo $branch|jq -r '.rgName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$PREFIX-$RG_LOCATION
+#export RG_NAME=$PREFIX-$RG_LOCATION
+export RG_NAME=reddog-$PREFIX-$RG_LOCATION
 
 # Create Branch
 ./branch_create.sh > $RG_NAME.log 2>&1 &

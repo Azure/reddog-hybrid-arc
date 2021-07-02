@@ -87,7 +87,7 @@ module cosmos 'modules/cosmos.bicep' = {
   }
 }
 
-module sqlServer 'modules/azuresql.bicep' = {
+module sqlServer 'modules/sqlazure.bicep' = {
   name: 'sqlserver'
   params: {
     prefix: name
@@ -100,6 +100,21 @@ module servicebus 'modules/servicebus.bicep' = {
   name: 'servicebus'
   params: {
     prefix: name
+  }
+}
+
+module loganalytics 'modules/loganalytics.bicep' = {
+  name: 'loganalytics'
+  params: {
+    retentionInDays: 30
+  }
+}
+
+module webapp 'modules/webapp.bicep' = {
+  name: 'webapp'
+  params: {
+    sku: 'S1'
+    tier: 'Standard'
   }
 }
 
