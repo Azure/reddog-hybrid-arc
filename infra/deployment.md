@@ -6,17 +6,16 @@ We have utilized Bicep to automatically deploy the demo application. The Hub dep
 
 This step will deploy the Corp environment used by the app. It includes:
 * Azure Kubernetes Service
-* Azure SQL Server
-* CosmosDB
+* Azure SQL Server and Database
+* CosmosDB - with database and container
 * Key Vault
 * Service Bus
 * Storage Account
+* App Service Web App
+* Log Analytics Workspace
 
 Still to be added:
-* App Service Web App
-* Cosmos Database and container
-* Azure SQL Database
-* Log Analytics
+* Pre-create SQL DB user
 * Key Vault secrets
 
 Instructions:
@@ -27,15 +26,23 @@ Instructions:
 * Run the script
 
 ```bash
+# deploy
 cd ./infra/hub/bicep
 ./run.sh
+
+# cleanup
+./cleanup.sh
 ```
 
 ### Branch
 
 This step will deploy a Branch or store environment used by the app. Multiple branches can be deployed. It includes:
-* VM Scale Set
+* VM (Jump Box)
+* VM (K8s control plane)
+* VM Scale Set (K8s nodes)
+* Virtual Network
 * Rancher K3s
+* Managed Identity
 
 Still to be added:
 * Kubernetes secrets
@@ -49,6 +56,9 @@ Instructions:
 ```bash
 cd ./infra/k3s/bicep
 ./run.sh
+
+# cleanup
+./cleanup.sh
 ```
 
 
