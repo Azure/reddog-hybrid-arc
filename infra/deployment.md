@@ -23,6 +23,7 @@ Instructions:
     * Uniqueness is needed for some of the resources. When the RG name is set, be sure it is something unique
     * The "branches" section is not used by this script
 * Set the ```var.sh``` values to match your environment
+* On MacOS, install `jq`, ie, `brew install jq`
 * Run the script
 
 ```bash
