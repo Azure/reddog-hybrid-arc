@@ -59,7 +59,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2020-07-01' = {
 }
 
 resource jump 'Microsoft.Compute/virtualMachines@2020-12-01' = {
-  name: '${name}-vm-deployment'
+  name: '${name}-vm'
   location: resourceGroup().location
   identity: {
      type: 'UserAssigned'
@@ -115,3 +115,4 @@ resource jump 'Microsoft.Compute/virtualMachines@2020-12-01' = {
 
 // Outputs
 output jumpPublicIP string = pubip.properties.ipAddress
+output jumpVMName string = jump.name

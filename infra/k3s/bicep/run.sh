@@ -6,7 +6,7 @@ source ./var.sh
 echo "Parameters"
 echo "------------------------------------------------"
 echo "ARM_DEPLOYMENT_NAME: $ARM_DEPLOYMENT_NAME"
-echo "SUBSCRIPTION: $SUBSCRIPTION"
+echo "SUBSCRIPTION: $SUBSCRIPTION_ID"
 echo "TENANT_ID: $TENANT_ID"
 echo "K3S_TOKEN: $K3S_TOKEN"
 echo "ADMIN_USER_NAME: $ADMIN_USER_NAME"
@@ -26,10 +26,9 @@ export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 # Loop through infra.json and create branches
 for branch in $(cat infra.json|jq -c '.branches[]')
 do
-export PREFIX=$(echo $branch|jq -r '.rgName')
+export PREFIX=$(echo $branch|jq -r '.rgNamePrefix')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-#export RG_NAME=$PREFIX-$RG_LOCATION
-export RG_NAME=reddog-$PREFIX-$RG_LOCATION
+export RG_NAME=$PREFIX-$RG_LOCATION
 
 # Create Branch
 ./branch_create.sh > $RG_NAME.log 2>&1 &

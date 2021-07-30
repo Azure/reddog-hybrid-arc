@@ -7,7 +7,7 @@ rm -rf ssh_keys
 # Delete Resource Groups
 for branch in $(cat infra.json|jq -c '.branches[]')
 do
-export PREFIX=$(echo $branch|jq -r '.rgName')
+export PREFIX=$(echo $branch|jq -r '.rgNamePrefix')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
 export RG_NAME=$PREFIX-$RG_LOCATION
 

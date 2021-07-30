@@ -33,13 +33,28 @@ param adminUsername string
 param adminPublicKey string
 param k3sToken string
 
-// Jump Server Managed Identity
-param jumpManagedIdentity string
-
+// Variables
 var name = '${prefix}-k3s'
 var controlName = '${name}-control'
 var jumpName = '${name}-jump'
 var workerName = '${name}-worker'
+var contributorDefId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+
+// ************** Resources **************
+resource userAssignedMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+  name: 'branchManagedIdentity'
+  location: resourceGroup().location
+}
+
+resource roleassignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(contributorDefId, resourceGroup().id)
+  scope: resourceGroup()
+  properties: {
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorDefId)
+    principalId: userAssignedMI.properties.principalId
+  }
+}
 
 // Create VNET
 resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
@@ -78,7 +93,7 @@ module jump 'modules/k3s/jump.bicep' = {
     subnetId: '${vnet.id}/subnets/${jumpboxSubnetInfo.name}'
     adminUsername: adminUsername
     adminPublicKey: adminPublicKey
-    managedIdentity: jumpManagedIdentity
+    managedIdentity: userAssignedMI.id
   }
 }
 
@@ -99,4 +114,7 @@ module workers 'modules/k3s/workers.bicep' = {
 // Outputs
 output publicIP string = jump.outputs.jumpPublicIP
 output controlName string = controlName
+output jumpVMName string = jump.outputs.jumpVMName
+output userAssignedMIAppID string = userAssignedMI.properties.clientId
+
 

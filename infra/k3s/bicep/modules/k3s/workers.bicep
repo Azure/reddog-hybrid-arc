@@ -24,7 +24,7 @@ runcmd:
 ''',control,k3sToken))
 
 resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
-  name: '${name}-vmss-deployment'
+  name: '${name}-vmss'
   location: resourceGroup().location
   sku: {
     name:vmSize
