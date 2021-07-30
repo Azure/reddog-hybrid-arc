@@ -7,7 +7,7 @@ source ./var.sh
 echo "Parameters"
 echo "------------------------------------------------"
 echo "ARM_DEPLOYMENT_NAME: $ARM_DEPLOYMENT_NAME"
-echo "SUBSCRIPTION: $SUBSCRIPTION"
+echo "SUBSCRIPTION: $SUBSCRIPTION_ID"
 echo "TENANT_ID: $TENANT_ID"
 echo "ADMIN_USER_NAME: $ADMIN_USER_NAME"
 echo "SSH_KEY_PATH: $SSH_KEY_PATH"
@@ -31,6 +31,9 @@ export RG_NAME=reddog-$PREFIX-hub-$RG_LOCATION
 
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
+
+# Set the Subscriptoin
+az account set --subscription $SUBSCRIPTION_ID
 
 # Create the Resource Group to deploy the Webinar Environment
 az group create --name $RG_NAME --location $RG_LOCATION

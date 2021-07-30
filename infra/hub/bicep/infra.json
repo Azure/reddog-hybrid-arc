@@ -1,16 +1,12 @@
 {
     "hub":
     {
-        "rgName":"reddogbtr",
+        "rgNamePrefix":"reddogbtr",
         "location":"eastus"
     },
     "branches":[
         {
-            "rgName":"denver",
-            "location":"eastus"
-        },
-        {
-            "rgName":"pittsburgh",
+            "rgNamePrefix":"denver",
             "location":"eastus"
         }
     ]
