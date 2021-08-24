@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: reddog-branch
+  labels:
+    app: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "ui"
+        dapr.io/config: "reddog.config"
+    spec:
+      containers:
+        - name: ui
+          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-ui:latest"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+          env:
+          - name: IS_CORP
+            value: "false"          
+          - name: STORE_ID
+            value: Denver
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reddog-branch-ui
+  namespace: reddog-branch  
+  labels:
+    name: reddog-branch-ui
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: ui          
