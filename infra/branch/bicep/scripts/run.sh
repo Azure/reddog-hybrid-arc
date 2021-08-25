@@ -3,8 +3,11 @@ source ./var.sh
 
 # Show Params
 show_params() {
+# Get RG Prefix
+export RG_PREFIX="$(cat infra.json|jq -r '.rgPrefix')"
 echo "Parameters"
 echo "------------------------------------------------"
+echo "RG_PREFIX: $RG_PREFIX"
 echo "ARM_DEPLOYMENT_NAME: $ARM_DEPLOYMENT_NAME"
 echo "SUBSCRIPTION: $SUBSCRIPTION_ID"
 echo "TENANT_ID: $TENANT_ID"
@@ -31,9 +34,9 @@ export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 create_branches() {
 for branch in $(cat infra.json|jq -c '.branches[]')
 do
-export PREFIX=$(echo $branch|jq -r '.rgNamePrefix')
+export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$PREFIX-$RG_LOCATION
+export RG_NAME=$RG_PREFIX-$BRANCH_NAME-$RG_LOCATION
 
 # Create log directory
 mkdir -p logs
@@ -64,7 +67,7 @@ az deployment group create \
   --mode Incremental \
   --resource-group $RG_NAME \
   --template-file ../deploy.bicep \
-  --parameters prefix=$PREFIX \
+  --parameters prefix=$BRANCH_NAME \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" 
@@ -109,7 +112,7 @@ echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
 # Arc join the cluster
 echo "Arc joining the branch cluster..."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $PREFIX-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 }
 
 # Execute Functions

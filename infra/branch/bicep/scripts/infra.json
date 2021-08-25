@@ -7,7 +7,7 @@
     },
     "branches":[
         {
-            "rgNamePrefix":"brooklyn",
+            "branchName":"brooklyn",
             "location":"eastus"
         }
     ]
