@@ -109,7 +109,20 @@ MI_APP_ID=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv 
 MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
 echo "User Assigned Managed Identity App ID: $MI_APP_ID"
 echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
+}
 
+prep_cluster()
+{
+echo "Creating Namespaces...."
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
+
+echo "Creating RabbitMQ and Redis Password Secrets...."
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+}
+
+arc_join_branch()
+{
 # Arc join the cluster
 echo "Arc joining the branch cluster..."
 ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
@@ -119,3 +132,4 @@ ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP
 show_params
 create_ssh_key_pair
 create_branches
+arc_join_branch
