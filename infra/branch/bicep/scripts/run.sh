@@ -132,4 +132,5 @@ ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP
 show_params
 create_ssh_key_pair
 create_branches
+prep_cluster
 arc_join_branch
