@@ -1,15 +1,19 @@
-# Delete Logs
-rm *.log
+#!/bin/bash
 
 # Delete SSH Keys
 rm -rf ssh_keys
 
+# Delete logs
+rm -rf logs
+
+export RG_PREFIX="$(cat infra.json|jq -r '.rgPrefix')"
+
 # Delete Resource Groups
 for branch in $(cat infra.json|jq -c '.branches[]')
 do
-export PREFIX=$(echo $branch|jq -r '.rgName')
+export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$PREFIX-$RG_LOCATION
+export RG_NAME=$RG_PREFIX-$BRANCH_NAME-$RG_LOCATION
 
 # Create Branch
 echo "Deleting Resource Group: $RG_NAME"

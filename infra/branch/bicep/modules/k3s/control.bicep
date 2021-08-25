@@ -38,7 +38,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2020-07-01' = {
 }
 
 resource masters 'Microsoft.Compute/virtualMachines@2020-12-01' = {
-  name: '${name}-vm-deployment'
+  name: '${name}-vm'
   location: resourceGroup().location
   properties: {
     hardwareProfile: {
