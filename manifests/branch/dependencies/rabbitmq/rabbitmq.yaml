@@ -11,3 +11,10 @@ spec:
     version: 8.9.2
   values:
     replicaCount: 3
+    #service.type: LoadBalancer
+    #auth.password: MyPassword123
+    #auth.username: reddogadmin
+    auth.existingPasswordSecret: rabbitmq-password
+    podSecurityContext.enabled: true
+    podSecurityContext.fsGroup: 2000
+    podSecurityContext.runAsUser: 0

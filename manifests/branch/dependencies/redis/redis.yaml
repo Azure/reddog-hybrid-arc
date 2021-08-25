@@ -9,3 +9,15 @@ spec:
     repository: https://charts.bitnami.com/bitnami
     name: redis
     version: 12.7.4
+  values:
+    #auth.password: MyPassword123
+    auth.existingSecret: redis-password
+    auth.existingSecretPasswordKey: redis-password
+    master.podSecurityContext.enabled: true
+    master.podSecurityContext.fsGroup: 2000
+    master.containerSecurityContext.runAsUser: 0
+    master.containerSecurityContext.enabled: true
+    replica.podSecurityContext.enabled: true
+    replica.podSecurityContext.fsGroup: 2000
+    replica.containerSecurityContext.runAsUser: 0
+    replica.containerSecurityContext.enabled: true

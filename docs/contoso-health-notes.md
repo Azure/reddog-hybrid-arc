@@ -6,16 +6,16 @@ https://contoso-denver-dashboard.denver-kube-env-557soegs.eastus.k4apps.io/#/das
 #### Arc GitOps
 
 ```bash
-export BRANCH_NAME=denver
-export RG_BRANCH=contoso-health-$BRANCH_NAME
-export BRANCH_CLUSTER_NAME=contoso-health-$BRANCH_NAME
+export BRANCH_NAME=brooklyn
+export RG_BRANCH=reddog-$BRANCH_NAME
+export BRANCH_CLUSTER_NAME=reddog-$BRANCH_NAME
 export BRANCH_LOC=eastus
 
 Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=contoso;Persist Security Info=False;User ID=contosouser;Password=MyPassword123;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;
 
 az connectedk8s connect --name $BRANCH_CLUSTER_NAME --resource-group $RG_BRANCH --location $BRANCH_LOC
 
-kubectl create ns contoso-health
+kubectl create ns reddog-retail
 kubectl create ns rabbitmq
 kubectl create ns redis
 
@@ -27,23 +27,35 @@ k get secret -n redis redis -o jsonpath='{.data.redis-password}' | base64 -d
 
 kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=MyPassword123
 kubectl create secret generic -n redis redis-password --from-literal=redis-password=MyPassword123
-kubectl create secret generic -n contoso-health reddog.secretstore --from-file=secretstore-cert="./kv-denver-cert.pfx" 
+
+az ad sp create-for-rbac --name "http://sp-reddog-$BRANCH_NAME.microsoft.com" --create-cert --cert cert-reddog-$BRANCH_NAME --keyvault reddogrando --skip-assignment --years 1
+
+export SP_APPID=$(az ad sp show --id "http://sp-reddog-$BRANCH_NAME.microsoft.com" -o tsv --query "appId")
+echo $SP_APPID
+export TENANT=""
+export SP_OBJECTID=$(az ad sp show --id "http://sp-reddog-$BRANCH_NAME.microsoft.com" -o tsv --query "objectId")
+
+az keyvault set-policy --name reddogrando --object-id $SP_OBJECTID --secret-permissions get
+az keyvault secret download --vault-name reddogrando --name cert-reddog-$BRANCH_NAME --encoding base64 --file kv-$BRANCH_NAME-cert.pfx
+
+kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert="./kv-brooklyn-cert.pfx" 
+
 kubectl apply -f ./RedDog.CorporateTransferService/func-deployment.yaml -n contoso-health
 
 helm upgrade --install dapr dapr/dapr --version=1.1.2 --namespace dapr-system --create-namespace 
 
 az k8sconfiguration create --name branch-office \
---cluster-name $BRANCH_CLUSTER_NAME \
---resource-group $RG_BRANCH \
+--cluster-name brooklyn-branch \
+--resource-group brooklyn-eastus \
 --scope cluster \
 --cluster-type connectedClusters \
 --operator-instance-name flux \
 --operator-namespace flux \
---operator-params='--git-readonly --git-path=manifests/branch/denver,manifests/branch/dependencies --git-branch=contoso-health --manifest-generation=true' \
+--operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true' \
 --enable-helm-operator \
 --helm-operator-params='--set helm.versions=v3' \
---repository-url git@github.com:lynn-orrell/reddog.git \
---ssh-private-key-file /Users/profile/.ssh/gitops
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key-file /Users/brianredmond/.ssh/gitops2
 
 az k8sconfiguration list --cluster-name $BRANCH_CLUSTER_NAME --resource-group $RG_BRANCH --cluster-type connectedClusters
 
