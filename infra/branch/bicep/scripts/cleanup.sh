@@ -1,8 +1,10 @@
-# Delete Logs
-rm *.log
+#!/bin/bash
 
 # Delete SSH Keys
 rm -rf ssh_keys
+
+# Delete logs
+rm -rf logs
 
 # Delete Resource Groups
 for branch in $(cat infra.json|jq -c '.branches[]')
