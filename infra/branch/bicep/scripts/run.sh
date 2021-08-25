@@ -49,7 +49,6 @@ done
 echo "Waiting for branch creation to complete..."
 echo "Check the log files in ./logs for individual branch creation status"
 wait
-echo "Branch creation complete!"
 }
 
 # Create Branch
@@ -75,7 +74,6 @@ az deployment group create \
 
 # Get the jump server public IP
 JUMP_IP=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.publicIP.value)
-echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/id_rsa"
 
 # Get the host name for the control host
 CONTROL_HOST_NAME=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.controlName.value)
@@ -109,28 +107,27 @@ MI_APP_ID=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv 
 MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
 echo "User Assigned Managed Identity App ID: $MI_APP_ID"
 echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
-}
 
-prep_cluster()
-{
+# Deploy initial cluster resources
 echo "Creating Namespaces...."
 ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
 
 echo "Creating RabbitMQ and Redis Password Secrets...."
 ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
 ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
-}
 
-arc_join_branch()
-{
 # Arc join the cluster
 echo "Arc joining the branch cluster..."
 ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+
+echo '****************************************************'
+echo 'Deployment Complete!'
+echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/id_rsa"
+echo '****************************************************'
 }
 
 # Execute Functions
 show_params
 create_ssh_key_pair
 create_branches
-prep_cluster
-arc_join_branch
+
