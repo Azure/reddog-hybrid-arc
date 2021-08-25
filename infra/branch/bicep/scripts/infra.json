@@ -1,7 +1,8 @@
 {
+    "rgPrefix": "reddog",
     "hub":
     {
-        "rgNamePrefix":"reddogbtr",
+        "rgNamePrefix":"hub",
         "location":"eastus"
     },
     "branches":[
