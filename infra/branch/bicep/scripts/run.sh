@@ -17,7 +17,7 @@ echo "------------------------------------------------"
 }
 
 
-# Loop through infra.json and create branches
+# Loop through $BRANCHES (from config.json) and create branches
 create_branches() {
 for branch in $BRANCHES
 do
