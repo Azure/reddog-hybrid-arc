@@ -6,7 +6,7 @@ show_params() {
 # Get RG Prefix
 echo "Parameters"
 echo "------------------------------------------------"
-echo "RG_PREFIX: $RG_PREFIX"
+echo "RG_PREFIX: $PREFIX"
 echo "ARM_DEPLOYMENT_NAME: $ARM_DEPLOYMENT_NAME"
 echo "SUBSCRIPTION: $SUBSCRIPTION_ID"
 echo "TENANT_ID: $TENANT_ID"
@@ -31,11 +31,11 @@ export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 
 # Loop through infra.json and create branches
 create_branches() {
-for branch in $(cat infra.json|jq -c '.branches[]')
+for branch in $BRANCHES
 do
 export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$RG_PREFIX-$BRANCH_NAME-$RG_LOCATION
+export RG_NAME=$PREFIX-$BRANCH_NAME-$RG_LOCATION
 
 # Create log directory
 mkdir -p logs
