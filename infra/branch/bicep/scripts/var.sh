@@ -11,12 +11,11 @@ export ADMIN_USER_NAME="$(cat config.json | jq -r '.admin_user_name')"
 export SSH_KEY_PATH="./ssh_keys"
 export SSH_KEY_NAME=$PREFIX"_id_rsa"
 
-export K3S_TOKEN="$(cat config.json | jq -r '.k3s_token')"
+export BRANCHES="$(cat config.json | jq -c '.branches[]')"
 
+export K3S_TOKEN="$(cat config.json | jq -r '.k3s_token')"
 export RABBIT_MQ_PASSWD="$(cat config.json | jq -r '.rabbit_passwd')"
 export REDIS_PASSWD="$(cat config.json | jq -r '.redis_passwd')"
-
-export BRANCHES=$(cat config.json | jq -c '.branches[]')
 
 #Generate ssh-key pair
 echo "Creating ssh key directory..."

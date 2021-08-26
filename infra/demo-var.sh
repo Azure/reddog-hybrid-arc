@@ -2,28 +2,30 @@
 
 # Set Global Variables
 export ARM_DEPLOYMENT_NAME="reddogbicep"
-export SUBSCRIPTION_ID="62afe9fc-190b-4f18-95ac-e5426017d4c8"
-export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+export SUBSCRIPTION_ID="$(cat demo-config.json | jq -r '.subscription_id')"
+export TENANT_ID="$(cat demo-config.json | jq -r '.tenant_id')"
 
-export PREFIX=$(cat infra.json|jq -r '.rgNamePrefix')
+export PREFIX="$(cat demo-config.json | jq -r '.rgNamePrefix')"
 
-export ADMIN_USER_NAME='reddogadmin'
+export ADMIN_USER_NAME="$(cat demo-config.json | jq -r '.admin_user_name')"
+
 export SSH_KEY_PATH="./ssh_keys"
 export SSH_KEY_NAME=$PREFIX"_id_rsa"
 
-# Hub Variables
-export HUBNAME=$(cat infra.json|jq -r '.hub.hubName')
-export SQL_ADMIN_USER_NAME="reddogadmin"
-export SQL_ADMIN_PASSWD="nJ0fqrQx7T^NZFl4sFf*U"
-export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
+export SQL_ADMIN_USER_NAME="$(cat demo-config.json | jq -r '.sql_admin_user_name')"
+export SQL_ADMIN_PASSWD="$(cat demo-config.json | jq -r '.sql_admin_passwd')"
+
+export HUBNAME"=$(cat infra.json|jq -r '.hub.hubName')"
+
+export RG_LOCATION="$(cat infra.json|jq -r '.hub.location')"
 export RG_NAME=reddog-$PREFIX-$HUBNAME-$RG_LOCATION
 
 # Branch Variables
-export BRANCHES=$(cat demo-infra.json|jq -c '.branches[]')
+export BRANCHES="$(cat demo-infra.json|jq -c '.branches[]')"
 
-export K3S_TOKEN='CAa6BYPyp+6NwLY5f3or'
-export RABBIT_MQ_PASSWD='MyPassword123'
-export REDIS_PASSWD='MyPassword123'
+export K3S_TOKEN="$(cat demo-config.json | jq -r '.k3s_token')"
+export RABBIT_MQ_PASSWD="$(cat demo-config.json | jq -r '.rabbit_passwd')"
+export REDIS_PASSWD="$(cat demo-config.json | jq -r '.redis_passwd')"
 
 
 # Generate ssh-key pair

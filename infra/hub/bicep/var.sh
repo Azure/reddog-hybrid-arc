@@ -15,9 +15,9 @@ export SSH_KEY_NAME=$PREFIX"_id_rsa"
 export SQL_ADMIN_USER_NAME="$(cat config.json | jq -r '.sql_admin_user_name')"
 export SQL_ADMIN_PASSWD="$(cat config.json | jq -r '.sql_admin_passwd')"
 
-export HUBNAME=$(cat infra.json|jq -r '.hub.hubName')
+export HUBNAME="$(cat infra.json|jq -r '.hub.hubName')"
 
-export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
+export RG_LOCATION="$(cat infra.json|jq -r '.hub.location')"
 export RG_NAME=reddog-$PREFIX-$HUBNAME-$RG_LOCATION
 
 #Generate ssh-key pair
