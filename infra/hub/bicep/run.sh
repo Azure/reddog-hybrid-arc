@@ -25,13 +25,6 @@ chmod 400 $SSH_KEY_PATH/id_rsa
 export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/id_rsa)"
 export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 
-<<<<<<< HEAD
-=======
-export PREFIX=$(cat infra.json|jq -r '.hub.rgNamePrefix')
-export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
-export RG_NAME=reddog-$PREFIX-hub-$RG_LOCATION
-
->>>>>>> 604291aafdad4fa0d3c182b5cf952f77fd38a7a4
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
 
