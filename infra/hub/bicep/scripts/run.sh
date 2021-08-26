@@ -24,7 +24,7 @@ az deployment group create \
   --name $ARM_DEPLOYMENT_NAME \
   --mode Incremental \
   --resource-group $RG_NAME \
-  --template-file deploy.bicep \
+  --template-file ../deploy.bicep \
   --parameters prefix=$PREFIX \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" \
