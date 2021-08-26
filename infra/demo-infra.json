@@ -1,0 +1,14 @@
+{
+    "rgPrefix": "reddogdemo",
+    "hub":
+    {
+        "hubName":"hub",
+        "location":"eastus"
+    },
+    "branches":[
+        {
+            "branchName":"brooklyn",
+            "location":"eastus"
+        }
+    ]
+}
