@@ -1,18 +1,19 @@
 #! /bin/bash
 
 # Set Variables
-export ARM_DEPLOYMENT_NAME="reddoghubbicep"
-export SUBSCRIPTION="40545cc3-81f4-42c9-953d-67534438918e"
-export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+export ARM_DEPLOYMENT_NAME="reddogbicep"
+export SUBSCRIPTION_ID="$(cat config.json | jq -r '.subscription_id')"
+export TENANT_ID="$(cat config.json | jq -r '.tenant_id')"
 
-export PREFIX=$(cat infra.json|jq -r '.rgNamePrefix')
+export PREFIX="$(cat config.json | jq -r '.rgNamePrefix')"
 
-export ADMIN_USER_NAME='raykao'
+export ADMIN_USER_NAME="$(cat config.json | jq -r '.admin_user_name')"
+
 export SSH_KEY_PATH="./ssh_keys"
 export SSH_KEY_NAME=$PREFIX"_id_rsa"
 
-export SQL_ADMIN_USER_NAME="reddogadmin"
-export SQL_ADMIN_PASSWD="nJ0fqrQx7T^NZFl4sFf*U"
+export SQL_ADMIN_USER_NAME="$(cat config.json | jq -r '.sql_admin_user_name')"
+export SQL_ADMIN_PASSWD="$(cat config.json | jq -r '.sql_admin_passwd')"
 
 export HUBNAME=$(cat infra.json|jq -r '.hub.hubName')
 
