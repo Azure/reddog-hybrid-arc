@@ -6,26 +6,14 @@ show_params() {
 # Get RG Prefix
 echo "Parameters"
 echo "------------------------------------------------"
-echo "RG_PREFIX: $PREFIX"
 echo "ARM_DEPLOYMENT_NAME: $ARM_DEPLOYMENT_NAME"
+echo "RG_PREFIX: $PREFIX"
 echo "SUBSCRIPTION: $SUBSCRIPTION_ID"
 echo "TENANT_ID: $TENANT_ID"
 echo "K3S_TOKEN: $K3S_TOKEN"
 echo "ADMIN_USER_NAME: $ADMIN_USER_NAME"
 echo "SSH_KEY_PATH: $SSH_KEY_PATH"
 echo "------------------------------------------------"
-}
-
-#Generate ssh-key pair
-create_ssh_key_pair() {
-echo "Creating ssh key directory..."
-mkdir $SSH_KEY_PATH
-
-echo "Generating ssh key..."
-ssh-keygen -f $SSH_KEY_PATH/id_rsa -N ''
-chmod 400 $SSH_KEY_PATH/id_rsa
-export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/id_rsa)"
-export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 }
 
 
@@ -95,11 +83,11 @@ sleep 20
 
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
-scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP:~/.ssh
+scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh
 
 # Execute setup script on jump server
 echo "Executing setup script on jump server...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
 
 # Get managd identity object id
 MI_APP_ID=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.userAssignedMIAppID.value)
@@ -109,24 +97,23 @@ echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
 # Deploy initial cluster resources
 echo "Creating Namespaces...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
 
 echo "Creating RabbitMQ and Redis Password Secrets...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
 
 # Arc join the cluster
 echo "Arc joining the branch cluster..."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/id_rsa $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
 echo '****************************************************'
 echo 'Deployment Complete!'
-echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/id_rsa"
+echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME"
 echo '****************************************************'
 }
 
 # Execute Functions
 show_params
-create_ssh_key_pair
 create_branches
 
