@@ -25,7 +25,7 @@ chmod 400 $SSH_KEY_PATH/id_rsa
 export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/id_rsa)"
 export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/id_rsa.pub)"
 
-export PREFIX=$(cat infra.json|jq -r '.hub.rgName')
+export PREFIX=$(cat infra.json|jq -r '.hub.rgNamePrefix')
 export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
 export RG_NAME=reddog-$PREFIX-hub-$RG_LOCATION
 

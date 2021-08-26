@@ -1,13 +1,13 @@
 {
     "hub":
     {
-        "rgNamePrefix":"reddogbtr",
-        "location":"eastus"
+        "rgNamePrefix":"reddogrk",
+        "location":"canadacentral"
     },
     "branches":[
         {
-            "rgNamePrefix":"denver",
-            "location":"eastus"
+            "rgNamePrefix":"toronto",
+            "location":"canadacentral"
         }
     ]
 }
