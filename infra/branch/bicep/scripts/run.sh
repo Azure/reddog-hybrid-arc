@@ -25,7 +25,7 @@ for branch in $BRANCHES
 do
 export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$PREFIX-$BRANCH_NAME-$RG_LOCATION
+export RG_NAME=$PREFIX-reddog-$BRANCH_NAME-$RG_LOCATION
 
 # Create log directory
 mkdir -p logs
@@ -54,7 +54,7 @@ az deployment group create \
   --name $ARM_DEPLOYMENT_NAME \
   --mode Incremental \
   --resource-group $RG_NAME \
-  --template-file ../deploy.bicep \
+  --template-file $BICEP_FILE \
   --parameters prefix=$BRANCH_NAME \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \

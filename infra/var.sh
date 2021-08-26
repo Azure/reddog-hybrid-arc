@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Set Global Variables
-export CONFIG="$(cat demo-config.json | jq -r )"
+export CONFIG="$(cat config.json | jq -r )"
 
 export ARM_DEPLOYMENT_NAME="reddogbicep"
 export SUBSCRIPTION_ID="$(echo $CONFIG | jq -r '.subscription_id')"

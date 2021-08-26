@@ -34,3 +34,5 @@ export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
 
 # Set the Subscriptoin
 az account set --subscription $SUBSCRIPTION_ID
+
+export BICEP_FILE="../deploy.bicep"

@@ -2,14 +2,15 @@
     "subscription_id": "37c790af-0a9d-43f7-8edd-c9e3912b4243",
     "tenant_id": "72f988bf-86f1-41af-91ab-2d7cd011db47",
     "admin_user_name": "reddogadmin",
-    "rgNamePrefix": "rkreddogdemo",
+    "rgNamePrefix": "rk",
     "k3s_token": "CAa6BYPyp+6NwLY5f3or",
     "rabbit_mq_passwd": "MyPassword123",
     "redis_passwd": "MyPassword123",
+
     "branches":[
         {
-            "branchName":"toronto",
-            "location":"canadacentral"
+            "branchName":"brooklyn",
+            "location":"eastus"
         }
     ]
 }
