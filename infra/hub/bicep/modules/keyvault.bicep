@@ -4,7 +4,6 @@ var uniqueId  = uniqueString(resourceGroup().id)
 var keyvaultname = 'hub-kv-${uniqueId}'
 
 resource keyvault 'Microsoft.KeyVault/vaults@2020-04-01-preview' = {
-  //name: '${prefix}-keyvault'
   name: keyvaultname
   location: resourceGroup().location
   properties: {
