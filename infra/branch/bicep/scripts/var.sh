@@ -2,19 +2,19 @@
 
 # Set Variables
 export ARM_DEPLOYMENT_NAME="reddogbicep"
-export SUBSCRIPTION_ID="62afe9fc-190b-4f18-95ac-e5426017d4c8"
-export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+export SUBSCRIPTION_ID="$(cat infra.json|jq -r '.subscription_id')"
+export TENANT_ID="$(cat infra.json|jq -r '.tenant_id')"
 
 export PREFIX="$(cat infra.json|jq -r '.rgNamePrefix')"
 
-export ADMIN_USER_NAME='reddogadmin'
+export ADMIN_USER_NAME="$(cat infra.json|jq -r '.admin_user_name')"
 export SSH_KEY_PATH="./ssh_keys"
 export SSH_KEY_NAME=$PREFIX"_id_rsa"
 
-export K3S_TOKEN='CAa6BYPyp+6NwLY5f3or'
+export K3S_TOKEN="$(cat infra.json|jq -r '.k3s_token')"
 
-export RABBIT_MQ_PASSWD='MyPassword123'
-export REDIS_PASSWD='MyPassword123'
+export RABBIT_MQ_PASSWD="$(cat infra.json|jq -r '.rabbit_passwd')"
+export REDIS_PASSWD="$(cat infra.json|jq -r '.redis_passwd')"
 
 export BRANCHES=$(cat infra.json|jq -c '.branches[]')
 
