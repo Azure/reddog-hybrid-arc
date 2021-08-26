@@ -1,23 +1,25 @@
 #! /bin/bash
 
 # Set Variables
+export CONFIG="$(cat config.json | jq -r )"
+
 export ARM_DEPLOYMENT_NAME="reddogbicep"
-export SUBSCRIPTION_ID="$(cat config.json | jq -r '.subscription_id')"
-export TENANT_ID="$(cat config.json | jq -r '.tenant_id')"
+export SUBSCRIPTION_ID="echo $CONFIG | jq -r '.subscription_id')"
+export TENANT_ID="echo $CONFIG | jq -r '.tenant_id')"
 
-export PREFIX="$(cat config.json | jq -r '.rgNamePrefix')"
+export PREFIX="echo $CONFIG | jq -r '.rgNamePrefix')"
 
-export ADMIN_USER_NAME="$(cat config.json | jq -r '.admin_user_name')"
+export ADMIN_USER_NAME="echo $CONFIG | jq -r '.admin_user_name')"
 
 export SSH_KEY_PATH="./ssh_keys"
 export SSH_KEY_NAME=$PREFIX"_id_rsa"
 
-export SQL_ADMIN_USER_NAME="$(cat config.json | jq -r '.sql_admin_user_name')"
-export SQL_ADMIN_PASSWD="$(cat config.json | jq -r '.sql_admin_passwd')"
+export SQL_ADMIN_USER_NAME="echo $CONFIG | jq -r '.sql_admin_user_name')"
+export SQL_ADMIN_PASSWD="echo $CONFIG | jq -r '.sql_admin_passwd')"
 
-export HUBNAME="$(cat config.json | jq -r '.hub.hubName')"
+export HUBNAME="echo $CONFIG | jq -r '.hub.hubName')"
 
-export RG_LOCATION="$(cat config.json | jq -r '.hub.location')"
+export RG_LOCATION="echo $CONFIG | jq -r '.hub.location')"
 export RG_NAME=reddog-$PREFIX-$HUBNAME-$RG_LOCATION
 
 #Generate ssh-key pair
