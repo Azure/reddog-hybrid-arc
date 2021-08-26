@@ -4,7 +4,6 @@ source ./var.sh
 # Show Params
 show_params() {
 # Get RG Prefix
-export RG_PREFIX="$(cat infra.json|jq -r '.rgPrefix')"
 echo "Parameters"
 echo "------------------------------------------------"
 echo "RG_PREFIX: $RG_PREFIX"

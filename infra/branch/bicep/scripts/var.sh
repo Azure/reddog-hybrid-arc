@@ -10,3 +10,4 @@ export SSH_KEY_PATH="./ssh_keys"
 export RABBIT_MQ_PASSWD='MyPassword123'
 export REDIS_PASSWD='MyPassword123'
 
+export RG_PREFIX="$(cat infra.json|jq -r '.rgNamePrefix')"
