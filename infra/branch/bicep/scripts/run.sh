@@ -85,7 +85,7 @@ sleep 20
 
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
-scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh
+scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
 
 # Execute setup script on jump server
 echo "Executing setup script on jump server...."
