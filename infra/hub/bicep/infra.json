@@ -1,13 +1,8 @@
 {
+    "rgPrefix": "reddogdemo",
     "hub":
     {
-        "rgNamePrefix":"reddogrk",
+        "hubName":"hub",
         "location":"canadacentral"
-    },
-    "branches":[
-        {
-            "rgNamePrefix":"toronto",
-            "location":"canadacentral"
-        }
-    ]
+    }
 }

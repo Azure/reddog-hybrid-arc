@@ -9,6 +9,8 @@ export SSH_KEY_PATH="./ssh_keys"
 export SQL_ADMIN_USER_NAME="reddogadmin"
 export SQL_ADMIN_PASSWD="nJ0fqrQx7T^NZFl4sFf*U"
 
-export PREFIX=$(cat infra.json|jq -r '.hub.rgNamePrefix')
+export PREFIX=$(cat infra.json|jq -r '.rgNamePrefix')
+export HUBNAME=$(cat infra.json|jq -r '.hub.hubName')
+
 export RG_LOCATION=$(cat infra.json|jq -r '.hub.location')
-export RG_NAME=reddog-$PREFIX-hub-$RG_LOCATION
+export RG_NAME=reddog-$PREFIX-$HUBNAME-$RG_LOCATION
