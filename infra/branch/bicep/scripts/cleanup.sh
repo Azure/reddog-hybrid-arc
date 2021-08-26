@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ./vars.sh
+source ./var.sh
 
 # Delete SSH Keys
 rm -rf ssh_keys
