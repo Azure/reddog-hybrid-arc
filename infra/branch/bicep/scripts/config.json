@@ -6,7 +6,6 @@
     "k3s_token": "CAa6BYPyp+6NwLY5f3or",
     "rabbit_mq_passwd": "MyPassword123",
     "redis_passwd": "MyPassword123",
-
     "branches":[
         {
             "branchName":"brooklyn",
