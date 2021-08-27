@@ -20,14 +20,19 @@ export RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_passwd')"
 export REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 
 #Generate ssh-key pair
-echo "Creating ssh key directory..."
-mkdir $SSH_KEY_PATH
+if test -f "$SSH_KEY_PATH/$SSH_KEY_NAME"; then
+    echo "$SSH_KEY_PATH/$SSH_KEY_NAME exists. Skipping SSH Key Gen"
+else
+	echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
+	echo "Creating ssh key directory..."
+	mkdir $SSH_KEY_PATH
+	echo "Generating ssh key..."
+	ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
+	chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
 
-echo "Generating ssh key..."
-ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
-chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
-export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
-export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
+	export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
+	export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
+fi
 
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)

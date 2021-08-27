@@ -2,7 +2,7 @@
     "subscription_id": "37c790af-0a9d-43f7-8edd-c9e3912b4243",
     "tenant_id": "72f988bf-86f1-41af-91ab-2d7cd011db47",
     "admin_user_name": "reddogadmin",
-    "rgNamePrefix": "rksup",
+    "rgNamePrefix": "rk",
     
     "sql_admin_user_name": "reddogadmin",
     "sql_admin_passwd": "nJ0fqrQx7T^NZFl4sFf*U",
@@ -20,6 +20,10 @@
         {
             "branchName":"brooklyn",
             "location":"eastus"
+        },
+        {
+            "branchName":"redmond",
+            "location":"westus"
         }
     ]
 }

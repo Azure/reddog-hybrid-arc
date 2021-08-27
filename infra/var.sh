@@ -20,7 +20,7 @@ export SQL_ADMIN_PASSWD="$(echo $CONFIG | jq -r '.sql_admin_passwd')"
 export HUBNAME"=$(echo $CONFIG | jq -r '.hub.hubName')"
 
 export RG_LOCATION="$(echo $CONFIG | jq -r '.hub.location')"
-export RG_NAME=reddog-$PREFIX-$HUBNAME-$RG_LOCATION
+export RG_NAME=$PREFIX-reddog-$HUBNAME-$RG_LOCATION
 
 # Branch Variables
 export BRANCHES="$(echo $CONFIG | jq -c '.branches[]')"
@@ -29,16 +29,20 @@ export K3S_TOKEN="$(echo $CONFIG | jq -r '.k3s_token')"
 export RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_passwd')"
 export REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 
-
 # Generate ssh-key pair
-echo "Creating ssh key directory..."
-mkdir $SSH_KEY_PATH
-echo "Generating ssh key..."
-ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
-chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
+if [ -f "$SSH_KEY_PATH/$SSH_KEY_NAME"]; then
+    echo "$SSH_KEY_PATH/$SSH_KEY_NAME exists. Skipping SSH Key Gen"
+else
+	echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
+	echo "Creating ssh key directory..."
+	mkdir $SSH_KEY_PATH
+	echo "Generating ssh key..."
+	ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
+	chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
 
-export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
-export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
+	export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
+	export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
+fi
 
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
