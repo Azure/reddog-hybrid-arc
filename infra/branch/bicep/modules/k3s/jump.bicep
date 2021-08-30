@@ -29,7 +29,7 @@ param diskSizeGB int = 50
 param name string
 
 resource pubip 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
-  name: 'jump-pub-ip'
+  name: '${name}-pub-ip'
   location: resourceGroup().location
   properties: {
    publicIPAllocationMethod: 'Static'

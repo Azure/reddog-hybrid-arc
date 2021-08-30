@@ -42,7 +42,7 @@ var contributorDefId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
 // ************** Resources **************
 resource userAssignedMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
-  name: 'branchManagedIdentity'
+  name: '${prefix}branchManagedIdentity'
   location: resourceGroup().location
 }
 
