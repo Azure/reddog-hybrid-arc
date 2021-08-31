@@ -24,7 +24,7 @@ spec:
   values:
     replicaCount: 3
     service:
-      type: LoadBalancer
+      type: ClusterIP
     auth:
       username: contosoadmin
       password: MyPassword123
