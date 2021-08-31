@@ -19,16 +19,18 @@ Still to be added:
 * Key Vault secrets
 
 Instructions:
-* Edit the ```infra.json``` file with desired settings
+* Edit the ```config.json``` file with desired settings
     * Uniqueness is needed for some of the resources. When the RG name is set, be sure it is something unique
     * The "branches" section is not used by this script
 * Set the ```var.sh``` values to match your environment
 * On MacOS, install `jq`, ie, `brew install jq`
+* On Linux (Debian based), install `jq`, ie, `apt install jq`
+* Modify the `config.json` file to reflect your environment
 * Run the script
 
 ```bash
 # deploy
-cd ./infra/hub/bicep
+cd ./infra/hub/bicep/scripts
 ./run.sh
 
 # cleanup
@@ -49,13 +51,14 @@ Still to be added:
 * Kubernetes secrets
 
 Instructions:
-* Edit the ```infra.json``` file with desired settings
+* Edit the ```config.json``` file with desired settings
     * Uniqueness is needed for some of the resources. When the RG name is set, be sure it is something unique
 * Set the ```var.sh``` values to match your environment
+* Modify the `config.json` file to reflect your environment
 * Run the script
 
 ```bash
-cd ./infra/k3s/bicep
+cd ./infra/k3s/bicep/scripts
 ./run.sh
 
 # cleanup
