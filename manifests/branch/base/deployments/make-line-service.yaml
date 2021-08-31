@@ -15,14 +15,14 @@ spec:
       labels:
         app: make-line-service
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "make-line-service"
-        dapr.io/app-port: "80"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: make-line-service
+        dapr.io/app-port: '80'
+        dapr.io/config: reddog.config
     spec:
       containers:
         - name: make-line-service
-          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-make-line-service:latest"
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-make-line-service:93005ff
           ports:
             - containerPort: 80
           imagePullPolicy: Always
