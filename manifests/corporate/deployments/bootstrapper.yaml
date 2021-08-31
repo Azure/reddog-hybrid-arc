@@ -12,12 +12,12 @@ spec:
       labels:
         app: bootstrapper
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "bootstrapper"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: bootstrapper
+        dapr.io/config: reddog.config
     spec:
       containers:
-      - name: bootstrapper
-        image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-bootstrapper:latest"
-        imagePullPolicy: Always
+        - name: bootstrapper
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-bootstrapper:17fd371
+          imagePullPolicy: Always
       restartPolicy: Never
