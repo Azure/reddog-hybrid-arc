@@ -15,14 +15,14 @@ spec:
       labels:
         app: loyalty-service
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "loyalty-service"
-        dapr.io/app-port: "80"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: loyalty-service
+        dapr.io/app-port: '80'
+        dapr.io/config: reddog.config
     spec:
       containers:
         - name: loyalty-service
-          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-loyalty-service:latest"
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-loyalty-service:17fd371
           ports:
             - containerPort: 80
           imagePullPolicy: Always
