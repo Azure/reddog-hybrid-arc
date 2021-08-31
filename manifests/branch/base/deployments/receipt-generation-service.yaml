@@ -15,14 +15,14 @@ spec:
       labels:
         app: receipt-generation-service
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "receipt-generation-service"
-        dapr.io/app-port: "80"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: receipt-generation-service
+        dapr.io/app-port: '80'
+        dapr.io/config: reddog.config
     spec:
       containers:
         - name: receipt-generation-service
-          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-receipt-generation-service:latest"
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-receipt-generation-service:4dcda2e
           ports:
             - containerPort: 80
           imagePullPolicy: Always
