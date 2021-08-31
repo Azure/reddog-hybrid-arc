@@ -15,14 +15,14 @@ spec:
       labels:
         app: order-service
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "order-service"
-        dapr.io/app-port: "80"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: order-service
+        dapr.io/app-port: '80'
+        dapr.io/config: reddog.config
     spec:
       containers:
         - name: order-service
-          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-order-service:latest"
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-order-service:36a5d04
           ports:
             - containerPort: 80
           imagePullPolicy: Always
