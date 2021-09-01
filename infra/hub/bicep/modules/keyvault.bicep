@@ -13,6 +13,7 @@ resource keyvault 'Microsoft.KeyVault/vaults@2020-04-01-preview' = {
       name: 'standard'
     }
     accessPolicies: accessPolicies
+    enableSoftDelete: false
   }
 }
 
