@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    name: keda
+  name: keda
+---
 apiVersion: helm.fluxcd.io/v1
 kind: HelmRelease
 metadata:
