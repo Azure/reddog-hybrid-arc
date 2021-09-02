@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ui
-  namespace: reddog-branch
+  namespace: reddog-retail
   labels:
     app: ui
 spec:
@@ -29,15 +29,15 @@ spec:
           - name: IS_CORP
             value: "false"          
           - name: STORE_ID
-            value: Denver
+            value: Vail
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: reddog-branch-ui
-  namespace: reddog-branch  
+  name: reddog-retail-ui
+  namespace: reddog-retail  
   labels:
-    name: reddog-branch-ui
+    name: reddog-retail-ui
 spec:
   type: LoadBalancer
   ports:

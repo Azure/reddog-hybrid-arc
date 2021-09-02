@@ -2,13 +2,13 @@ apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
   name: reddog.state.loyalty
-  namespace: reddog-corp
+  namespace: reddog-retail
 spec:
   type: state.azure.cosmosdb
   version: v1
   metadata:
     - name: url
-      value: https://reddogdemocorp.documents.azure.com:443/
+      value: https://brian-hub-cosmos-eastus.documents.azure.com:443/
     - name: database
       value: reddog
     - name: collection

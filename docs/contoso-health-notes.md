@@ -165,15 +165,15 @@ az keyvault set-policy --name $KV_BRANCH --object-id $SP_OBJECTID --secret-permi
 az keyvault secret download --vault-name $KV_BRANCH --name cert-reddog-$BRANCH_NAME --encoding base64 --file kv-$BRANCH_NAME-cert.pfx
 
 # SP & Cert Setup (Corp)
-az ad sp create-for-rbac --name "http://sp-reddog-corp" --create-cert --cert cert-contoso-corp --keyvault $KV_CORP --skip-assignment --years 1
+az ad sp create-for-rbac --name "http://sp-reddog-retail" --create-cert --cert cert-contoso-corp --keyvault $KV_CORP --skip-assignment --years 1
 
-export SP_APPID=$(az ad sp show --id "http://sp-reddog-corp" -o tsv --query "appId")
+export SP_APPID=$(az ad sp show --id "http://sp-reddog-retail" -o tsv --query "appId")
 echo $SP_APPID
 export TENANT=""
-export SP_OBJECTID=$(az ad sp show --id "http://sp-reddog-corp" -o tsv --query "objectId")
+export SP_OBJECTID=$(az ad sp show --id "http://sp-reddog-retail" -o tsv --query "objectId")
 
 az keyvault set-policy --name $KV_CORP --object-id $SP_OBJECTID --secret-permissions get
-az keyvault secret download --vault-name $KV_CORP --name cert-reddog-corp --encoding base64 --file kv-corp-cert.pfx
+az keyvault secret download --vault-name $KV_CORP --name cert-reddog-retail --encoding base64 --file kv-corp-cert.pfx
 
 # Manually created Azure SQL Server and SQL DB (Corp and Branch)
 # Use reddogadmin for server user 
@@ -243,7 +243,7 @@ kubectl apply -f ./manifests/sql/sql-server.yaml -n sql
 
 kubectl delete -f ./manifests/sql/sql-server.yaml -n sql
 
-sqlcmd -S 192.168.1.1 -U sa -P "MyPassword123"
+sqlcmd -S 10.128.1.4 -U sa -P "MyPassword123"
 
 # for SQL Azure
 create user contosouser with password = 'MyPassword123';
@@ -318,12 +318,14 @@ kubectl apply -f ./manifests/branch/base/deployments/accounting-service.yaml
 
 kubectl apply -f ./manifests/branch/base/deployments/virtual-customers.yaml
 kubectl apply -f ./manifests/branch/base/deployments/virtual-worker.yaml
-kubectl apply -f ./manifests/ui.yaml
+kubectl apply -f ./manifests/branch/base/deployments/ui.yaml
+kubectl apply -f ./manifests/branch/base/deployments/services-for-ui.yaml
+
+vi ./manifests/branch/base/deployments/ui.yaml
 
 kubectl apply -f ./manifests/branch/base/deployments/corp-transfer-fx.yaml
 
 kubectl apply -f ./manifests/ingress.yaml
-kubectl apply -f ./manifests/services-for-ui.yaml
 
 kubectl delete -f ./manifests/branch/base/deployments/bootstrapper.yaml
 kubectl delete -f ./manifests/branch/base/deployments/order-service.yaml
