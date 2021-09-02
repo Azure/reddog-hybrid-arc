@@ -54,7 +54,4 @@ az k8sconfiguration create --name branch-office \
 --helm-operator-params='--set helm.versions=v3' \
 --repository-url git@github.com:Azure/reddog-retail-demo.git \
 --ssh-private-key-file /Users/brianredmond/.ssh/gitops2
-
-
-
 ```
