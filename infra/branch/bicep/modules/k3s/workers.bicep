@@ -16,6 +16,11 @@ param name string
 param control string
 
 param k3sToken string
+
+var lbName = '${name}-lb'
+
+var uiPort = 8081
+
 var customData = base64(format('''
 #cloud-config
 package_upgrade: true
@@ -39,7 +44,7 @@ resource pubip 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
 }
 
 resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
-  name: '${name}-lb'
+  name: lbName
   location: resourceGroup().location
   sku: {
     name: 'Standard'
@@ -56,12 +61,29 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
         }
       }
     ]
-    // loadBalancingRules: [
-      
-    // ]
-    // backendAddressPools: [
-      
-    // ]
+    backendAddressPools: [
+      {
+        name: 'k3sworkers'
+      }  
+    ]
+    loadBalancingRules: [
+      {
+        name: 'ui-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: uiPort
+          backendPort: uiPort
+          protocol: 'Tcp'
+        }
+      }  
+    ]
     // outboundRules: [
       
     // ]
@@ -70,6 +92,30 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
     // ]
   }
 }
+
+resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
+  name: '${name}-nsg'
+  location: resourceGroup().location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-inet-inbound-${uiPort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${uiPort}'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${uiPort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+    ]
+  }
+}
+
 resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
   name: '${name}-vmss'
   location: resourceGroup().location
@@ -120,6 +166,9 @@ resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
             name: '${prefix}-nic'
             properties: {
               primary: true
+              networkSecurityGroup: {
+                id: nsg.id
+              }
               ipConfigurations:[
                 {
                   name: '${prefix}-nic-priv-ip'
@@ -127,6 +176,11 @@ resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
                     subnet: {
                       id: subnetId
                     }
+                    loadBalancerBackendAddressPools: [
+                      {
+                        id: '${loadBalancer.id}/backendAddressPools/k3sworkers'
+                      }
+                    ]
                   }
                 }
               ]
