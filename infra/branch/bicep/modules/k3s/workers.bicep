@@ -23,6 +23,53 @@ runcmd:
   - curl -sfL https://get.k3s.io | K3S_URL=https://{0}:6443 K3S_TOKEN={1} sh -s -
 ''',control,k3sToken))
 
+resource pubip 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+  name: '${name}-pub-ip'
+  location: resourceGroup().location
+  sku: {
+    name: 'Standard'
+    tier: 'Regional'
+  }
+  properties: {
+   publicIPAllocationMethod: 'Static'
+   dnsSettings: {
+     domainNameLabel: '${name}-pub-ip'
+   }
+  }
+}
+
+resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
+  name: '${name}-lb'
+  location: resourceGroup().location
+  sku: {
+    name: 'Standard'
+    tier: 'Regional'
+  }
+  properties: {
+    frontendIPConfigurations: [
+      {
+        name: '${name}-frontend-ip'
+        properties: {
+          publicIPAddress: {
+            id: pubip.id
+          }
+        }
+      }
+    ]
+    // loadBalancingRules: [
+      
+    // ]
+    // backendAddressPools: [
+      
+    // ]
+    // outboundRules: [
+      
+    // ]
+    // probes: [
+      
+    // ]
+  }
+}
 resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
   name: '${name}-vmss'
   location: resourceGroup().location

@@ -13,7 +13,7 @@ for branch in $BRANCHES
 do
 export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
 export RG_LOCATION=$(echo $branch|jq -r '.location')
-export RG_NAME=$PREFIX-$BRANCH_NAME-$RG_LOCATION
+export RG_NAME=$PREFIX-reddog-$BRANCH_NAME-$RG_LOCATION
 
 # Create Branch
 echo "Deleting Resource Group: $RG_NAME"
