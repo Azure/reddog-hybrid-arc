@@ -55,7 +55,7 @@ az deployment group create \
   --mode Incremental \
   --resource-group $RG_NAME \
   --template-file $BICEP_FILE \
-  --parameters prefix=$BRANCH_NAME \
+  --parameters prefix=$PREFIX$BRANCH_NAME \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" 
@@ -107,7 +107,7 @@ ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAM
 
 # Arc join the cluster
 echo "Arc joining the branch cluster..."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
 echo '****************************************************'
 echo 'Deployment Complete!'
