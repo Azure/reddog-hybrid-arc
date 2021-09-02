@@ -1,7 +1,8 @@
 #! /bin/bash
+set -e
 
 # Set Global Variables
-export CONFIG="$(cat config.json | jq -r )"
+export CONFIG="$(cat config.json | jq -r .)"
 
 export ARM_DEPLOYMENT_NAME="reddogbicep"
 export SUBSCRIPTION_ID="$(echo $CONFIG | jq -r '.subscription_id')"
@@ -30,7 +31,7 @@ export RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_passwd')"
 export REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 
 # Generate ssh-key pair
-if [ -f "$SSH_KEY_PATH/$SSH_KEY_NAME"]; then
+if [ -f "$SSH_KEY_PATH/$SSH_KEY_NAME" ]; then
     echo "$SSH_KEY_PATH/$SSH_KEY_NAME exists. Skipping SSH Key Gen"
 else
 	echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
