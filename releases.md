@@ -1,34 +1,31 @@
 ## Release Schedule
 
-### Milestone v0.5
-
-Target: 9/1/2021 (Demo for Team)
-
-Features:
-* Scripted install of Corp and Store(s) with Bicep/GitOps
-* Power App
-
-### Milestone v0.6
-
-Target: 9/17/2021
-
-To do list:
-* Contributor's Guide
-* Finalize auotmation
-* Arc Enabled SQL Server for DB
-* Arc Enabled APIM for exposed API's
-* Function for mobile orders (Corp -> Store)
-* Schema Updates (category, image urls, etc)
-* Mobile Apps (IoS and Android)
-* UI Updates
-* Secret management (with Arc)
-
-
 ### Milestone v1.0
 
 Target: 9/27/2021 (GBB Airlift)
 
+To do list:
+* Create updated data file for products including category (Linda)
+* Update microservices code where needed for above data file
+* Finalize Infra automation (Key Vault secrets and other stuff from the doc)
+* Update the manifests on the source repo (primarily the Helm fixes)
+* SQL Server
+  * Either Arc or SQL container
+  * Need to automate DB creation and add connect string to KV
+* Lima setup
+* Arc Enabled API Management setup
+* Automate creation of Web App UI and Function Apps in Lima (Corp Transfer Service)
+* Create function for mobile orders created at Corp (Corp -> Store)
+* Connect Mobile Apps to Corp order service (via APIM)
+* UI Updates
+* Contributor's Guide / Documentation
+* Slide Deck, Videos, etc. - covering the business side and some of the technical decisions we have made
+
+
+### Milestone vNext
+
 Features:
-* Documentation
+* Complete Documentation
+* Container Apps
 * Event Grid
 * Azure ML
