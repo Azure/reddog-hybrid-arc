@@ -8,6 +8,9 @@ rm -rf ssh_keys
 # Delete logs
 rm -rf logs
 
+# Delete outputs
+rm -rf outputs
+
 # Delete Resource Groups
 for branch in $BRANCHES
 do
