@@ -135,7 +135,7 @@ module keyvault 'modules/keyvault.bicep' = {
         permissions: {
           secrets: [
             'get'
-            'create'
+            'set'
           ]
         }
       }
