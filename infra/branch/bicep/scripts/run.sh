@@ -65,13 +65,6 @@ az deployment group create \
 mkdir -p outputs
 az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
 
-# Get the jump server public IP
-JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
-
-# Get the host name for the control host
-CONTROL_HOST_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .controlName.value)
-echo "Control Host Name: $CONTROL_HOST_NAME"
-
 # Get the host name for the control host
 JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
 echo "Jump Host Name: $JUMP_VM_NAME"
@@ -87,31 +80,41 @@ echo "Jump Server Running!"
 # Give the VM a few more seconds to become available
 sleep 20
 
+# Get the jump server public IP
+JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+
+run_on_jumpbox () {
+  ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
+}
+
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
 scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
 
 # Execute setup script on jump server
+# Get the host name for the control host
+CONTROL_HOST_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .controlName.value)
+echo "Control Host Name: $CONTROL_HOST_NAME"
 echo "Executing setup script on jump server...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
+run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
 
+# Deploy initial cluster resources
+echo "Creating Namespaces...."
+run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
+
+echo "Creating RabbitMQ and Redis Password Secrets...."
+run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
+run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+
+# Arc join the cluster
 # Get managd identity object id
 MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
 MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
 echo "User Assigned Managed Identity App ID: $MI_APP_ID"
 echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
-# Deploy initial cluster resources
-echo "Creating Namespaces...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
-
-echo "Creating RabbitMQ and Redis Password Secrets...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
-
-# Arc join the cluster
 echo "Arc joining the branch cluster..."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
 echo '****************************************************'
 echo 'Deployment Complete!'
