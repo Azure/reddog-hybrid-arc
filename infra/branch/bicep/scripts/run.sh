@@ -108,13 +108,18 @@ run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-lit
 
 ## Create SP for Key Vault Access
 KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
+echo "Key Vault: $KV_NAME"
+echo "Create SP for KV use..."
 az ad sp create-for-rbac --name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" --create-cert --cert cert-reddog-$PREFIX$BRANCH_NAME --keyvault $KV_NAME --skip-assignment --years 1
 ## Get SP APP ID
-SP_APPID=$(az ad sp show --id "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" -o tsv --query "appId")
-echo "AKV SP_APP_ID: $SP_APPID"
+echo "Get SP_APPID..."
+SP_INFO=$(az ad sp list --display-name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com")
+SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+echo "AKV SP_APPID: $SP_APPID"
 ## Get SP Object ID
-SP_OBJECTID=$(az ad sp show --id "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" -o tsv --query "objectId")
-echo "AKV SP_$SP_OBJECTID"
+echo "Get SP_OBJECTID..."
+SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+echo "AKV SP_OBJECTID: $SP_OBJECTID"
 # Assign SP to KV with GET permissions
 az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
 az keyvault secret download --vault-name $KV_NAME --name cert-reddog-$PREFIX$BRANCH_NAME --encoding base64 --file $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx

@@ -129,15 +129,16 @@ module keyvault 'modules/keyvault.bicep' = {
           ]
         }
       }
-      // {
-      //   objectId: keyVaultSPObjectId
-      //   tenantId: subscription().tenantId
-      //   permissions: {
-      //     secrets: [
-      //       'get'
-      //     ]
-      //   }
-      // }
+      {
+        objectId: currentUserId
+        tenantId: subscription().tenantId
+        permissions: {
+          secrets: [
+            'get'
+            'create'
+          ]
+        }
+      }
     ]
   }
 }
@@ -147,6 +148,6 @@ output publicIP string = jump.outputs.jumpPublicIP
 output controlName string = controlName
 output jumpVMName string = jump.outputs.jumpVMName
 output userAssignedMIAppID string = userAssignedMI.properties.clientId
-output keyvaultName string = keyvault.name
+output keyvaultName string = keyvault.outputs.name
 
 
