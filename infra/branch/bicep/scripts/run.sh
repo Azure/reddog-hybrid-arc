@@ -58,8 +58,8 @@ az deployment group create \
   --parameters prefix=$PREFIX$BRANCH_NAME \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
-  --parameters adminPublicKey="$SSH_PUB_KEY" 
-
+  --parameters adminPublicKey="$SSH_PUB_KEY" \
+  --parameters currentUserId="$CURRENT_USER_ID"
 
 # Get the jump server public IP
 JUMP_IP=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.publicIP.value)
