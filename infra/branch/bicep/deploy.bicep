@@ -147,5 +147,6 @@ output publicIP string = jump.outputs.jumpPublicIP
 output controlName string = controlName
 output jumpVMName string = jump.outputs.jumpVMName
 output userAssignedMIAppID string = userAssignedMI.properties.clientId
+output keyvaultName string = keyvault.name
 
 
