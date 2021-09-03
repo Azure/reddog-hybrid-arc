@@ -106,6 +106,23 @@ echo "Creating RabbitMQ and Redis Password Secrets...."
 run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
 run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
 
+## Create SP for Key Vault Access
+KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
+az ad sp create-for-rbac --name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" --create-cert --cert cert-reddog-$PREFIX$BRANCH_NAME --keyvault $KV_NAME --skip-assignment --years 1
+## Get SP APP ID
+SP_APPID=$(az ad sp show --id "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" -o tsv --query "appId")
+echo "AKV SP_APP_ID: $SP_APPID"
+## Get SP Object ID
+SP_OBJECTID=$(az ad sp show --id "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" -o tsv --query "objectId")
+echo "AKV SP_$SP_OBJECTID"
+# Assign SP to KV with GET permissions
+az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
+az keyvault secret download --vault-name $KV_NAME --name cert-reddog-$PREFIX$BRANCH_NAME --encoding base64 --file $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx
+# copy pfx file to jump box and create secret there
+scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$PREFIX$BRANCH_NAME-cert.pfx
+# Set k8s secret from jumpbox
+run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$PREFIX$BRANCH_NAME-cert.pfx"
+
 # Arc join the cluster
 # Get managd identity object id
 MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
