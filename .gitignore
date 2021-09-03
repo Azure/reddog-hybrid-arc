@@ -121,3 +121,4 @@ infra/hub/bicep/ssh_keys/**
 infra/k3s/bicep/ssh_keys/**
 
 ssh_keys/
+outputs/

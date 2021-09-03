@@ -1,7 +1,8 @@
 #! /bin/bash
+set -e
 
 # Set Variables
-export CONFIG="$(cat config.json | jq -r )"
+export CONFIG="$(cat config.json | jq -r .)"
 
 export ARM_DEPLOYMENT_NAME="reddogbicep"
 export SUBSCRIPTION_ID="$(echo $CONFIG | jq -r '.subscription_id')"
@@ -29,10 +30,10 @@ else
 	echo "Generating ssh key..."
 	ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
 	chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
-
-	export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
-	export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
 fi
+
+export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
+export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
 
 # Get the current user Object ID
 export CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)

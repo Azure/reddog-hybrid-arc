@@ -55,21 +55,18 @@ az deployment group create \
   --mode Incremental \
   --resource-group $RG_NAME \
   --template-file $BICEP_FILE \
-  --parameters prefix=$BRANCH_NAME \
+  --parameters prefix=$PREFIX$BRANCH_NAME \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
-  --parameters adminPublicKey="$SSH_PUB_KEY" 
+  --parameters adminPublicKey="$SSH_PUB_KEY" \
+  --parameters currentUserId="$CURRENT_USER_ID"
 
-
-# Get the jump server public IP
-JUMP_IP=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.publicIP.value)
-
-# Get the host name for the control host
-CONTROL_HOST_NAME=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.controlName.value)
-echo "Control Host Name: $CONTROL_HOST_NAME"
+# Save deployment outputs
+mkdir -p outputs
+az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
 
 # Get the host name for the control host
-JUMP_VM_NAME=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.jumpVMName.value)
+JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
 echo "Jump Host Name: $JUMP_VM_NAME"
 
 echo "Wait for jump server to start"
@@ -83,31 +80,63 @@ echo "Jump Server Running!"
 # Give the VM a few more seconds to become available
 sleep 20
 
+# Get the jump server public IP
+JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+
+run_on_jumpbox () {
+  ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
+}
+
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
 scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
 
 # Execute setup script on jump server
+# Get the host name for the control host
+CONTROL_HOST_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .controlName.value)
+echo "Control Host Name: $CONTROL_HOST_NAME"
 echo "Executing setup script on jump server...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
+run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
 
+# Deploy initial cluster resources
+echo "Creating Namespaces...."
+run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
+
+echo "Creating RabbitMQ and Redis Password Secrets...."
+run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
+run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+
+## Create SP for Key Vault Access
+KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
+echo "Key Vault: $KV_NAME"
+echo "Create SP for KV use..."
+az ad sp create-for-rbac --name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" --create-cert --cert cert-reddog-$PREFIX$BRANCH_NAME --keyvault $KV_NAME --skip-assignment --years 1
+## Get SP APP ID
+echo "Get SP_APPID..."
+SP_INFO=$(az ad sp list --display-name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com")
+SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+echo "AKV SP_APPID: $SP_APPID"
+## Get SP Object ID
+echo "Get SP_OBJECTID..."
+SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+echo "AKV SP_OBJECTID: $SP_OBJECTID"
+# Assign SP to KV with GET permissions
+az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
+az keyvault secret download --vault-name $KV_NAME --name cert-reddog-$PREFIX$BRANCH_NAME --encoding base64 --file $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx
+# copy pfx file to jump box and create secret there
+scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$PREFIX$BRANCH_NAME-cert.pfx
+# Set k8s secret from jumpbox
+run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$PREFIX$BRANCH_NAME-cert.pfx"
+
+# Arc join the cluster
 # Get managd identity object id
-MI_APP_ID=$(az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o tsv --query properties.outputs.userAssignedMIAppID.value)
+MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
 MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
 echo "User Assigned Managed Identity App ID: $MI_APP_ID"
 echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
-# Deploy initial cluster resources
-echo "Creating Namespaces...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis"
-
-echo "Creating RabbitMQ and Redis Password Secrets...."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
-
-# Arc join the cluster
 echo "Arc joining the branch cluster..."
-ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP "az connectedk8s connect -g $RG_NAME -n $BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
 echo '****************************************************'
 echo 'Deployment Complete!'

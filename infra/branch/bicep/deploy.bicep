@@ -1,6 +1,9 @@
 // Basic Naming Convention
 param prefix string
 
+// For AKV and other user IAM/RBAC
+param currentUserId string
+
 // Networking
 param vnetPrefix string = '10.128.0.0/16'
 param loadBalancerSubnetInfo object = {
@@ -111,10 +114,40 @@ module workers 'modules/k3s/workers.bicep' = {
   }
 }
 
+module keyvault 'modules/keyvault.bicep' = {
+  name: 'keyvault'
+  params: {
+    prefix: prefix
+    accessPolicies: [
+      {
+        objectId: currentUserId
+        tenantId: subscription().tenantId
+        permissions: {
+          certificates: [
+            'get'
+            'create'
+          ]
+        }
+      }
+      {
+        objectId: currentUserId
+        tenantId: subscription().tenantId
+        permissions: {
+          secrets: [
+            'get'
+            'set'
+          ]
+        }
+      }
+    ]
+  }
+}
+
 // Outputs
 output publicIP string = jump.outputs.jumpPublicIP
 output controlName string = controlName
 output jumpVMName string = jump.outputs.jumpVMName
 output userAssignedMIAppID string = userAssignedMI.properties.clientId
+output keyvaultName string = keyvault.outputs.name
 
 

@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    name: dapr-system
+  name: dapr-system
+---
 apiVersion: helm.fluxcd.io/v1
 kind: HelmRelease
 metadata:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ./var.sh
+source ./var.sh cleanup
 
 # Delete SSH Keys
 rm -rf $SSH_KEY_PATH

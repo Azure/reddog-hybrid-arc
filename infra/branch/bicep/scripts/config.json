@@ -8,7 +8,7 @@
     "redis_passwd": "MyPassword123",
     "branches":[
         {
-            "branchName":"brooklyn",
+            "branchName":"brooklin",
             "location":"eastus"
         }
     ]
