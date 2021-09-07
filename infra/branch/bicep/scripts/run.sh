@@ -114,16 +114,16 @@ echo "User Assigned Managed Identity App ID: $MI_APP_ID"
 echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
 echo "Arc joining the branch cluster..."
-run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $RG_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
 ## Create SP for Key Vault Access
 KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
 echo "Key Vault: $KV_NAME"
 echo "Create SP for KV use..."
-az ad sp create-for-rbac --name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com" --create-cert --cert cert-reddog-$PREFIX$BRANCH_NAME --keyvault $KV_NAME --skip-assignment --years 1
+az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
 ## Get SP APP ID
 echo "Get SP_APPID..."
-SP_INFO=$(az ad sp list --display-name "http://sp-reddog-$PREFIX$BRANCH_NAME.microsoft.com")
+SP_INFO=$(az ad sp list --display-name "http://sp-$RG_NAME.microsoft.com")
 SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
 echo "AKV SP_APPID: $SP_APPID"
 ## Get SP Object ID
@@ -132,14 +132,14 @@ SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
 echo "AKV SP_OBJECTID: $SP_OBJECTID"
 # Assign SP to KV with GET permissions
 az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
-az keyvault secret download --vault-name $KV_NAME --name cert-reddog-$PREFIX$BRANCH_NAME --encoding base64 --file $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx
+az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encoding base64 --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
 # copy pfx file to jump box and create secret there
-scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$PREFIX$BRANCH_NAME-cert.pfx
+scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
 # Set k8s secret from jumpbox
-run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$PREFIX$BRANCH_NAME-cert.pfx"
+run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx"
 
-az k8s-configuration create --name $PREFIX$BRANCH_NAME-branch \
---cluster-name $PREFIX$BRANCH_NAME-branch \
+az k8s-configuration create --name $RG_NAME-branch \
+--cluster-name $RG_NAME-branch \
 --resource-group $RG_NAME \
 --scope cluster \
 --cluster-type connectedClusters \
