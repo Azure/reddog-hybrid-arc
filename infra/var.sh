@@ -53,10 +53,11 @@ else
 		ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
 		chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
 
-		export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
-		export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
 	fi
 fi
+
+export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
+export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
 
 
 

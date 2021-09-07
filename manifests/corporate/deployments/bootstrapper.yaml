@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: bootstrapper
-  namespace: reddog-corp
+  namespace: reddog-retail
   labels:
     app: bootstrapper
 spec:
@@ -20,4 +20,4 @@ spec:
         - name: bootstrapper
           image: ghcr.io/azure/reddog-retail-demo/reddog-retail-bootstrapper:17fd371
           imagePullPolicy: Always
-      restartPolicy: Never
+      restartPolicy: OnFailure
