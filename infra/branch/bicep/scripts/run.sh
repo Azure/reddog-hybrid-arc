@@ -123,7 +123,7 @@ echo "Create SP for KV use..."
 az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
 ## Get SP APP ID
 echo "Get SP_APPID..."
-SP_INFO=$(az ad sp list --display-name "http://sp-$RG_NAME.microsoft.com")
+SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
 SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
 echo "AKV SP_APPID: $SP_APPID"
 ## Get SP Object ID
