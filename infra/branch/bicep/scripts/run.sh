@@ -106,6 +106,16 @@ echo "Creating RabbitMQ and Redis Password Secrets...."
 run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
 run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
 
+# Arc join the cluster
+# Get managd identity object id
+MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
+MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
+echo "User Assigned Managed Identity App ID: $MI_APP_ID"
+echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
+
+echo "Arc joining the branch cluster..."
+run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+
 ## Create SP for Key Vault Access
 KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
 echo "Key Vault: $KV_NAME"
@@ -128,15 +138,18 @@ scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$PREFIX$BRANCH_NAME-cert.pfx
 # Set k8s secret from jumpbox
 run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$PREFIX$BRANCH_NAME-cert.pfx"
 
-# Arc join the cluster
-# Get managd identity object id
-MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
-MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
-echo "User Assigned Managed Identity App ID: $MI_APP_ID"
-echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
-
-echo "Arc joining the branch cluster..."
-run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $PREFIX$BRANCH_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+az k8s-configuration create --name $PREFIX$BRANCH_NAME-branch \
+--cluster-name $PREFIX$BRANCH_NAME-branch \
+--resource-group $RG_NAME \
+--scope cluster \
+--cluster-type connectedClusters \
+--operator-instance-name flux \
+--operator-namespace flux \
+--operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true' \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key "$(cat arc-priv-key-b64)"
 
 echo '****************************************************'
 echo 'Deployment Complete!'
