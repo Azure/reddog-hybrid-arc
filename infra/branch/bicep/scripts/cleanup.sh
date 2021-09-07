@@ -20,7 +20,7 @@ export RG_LOCATION=$(echo $branch|jq -r '.location')
 export RG_NAME=$PREFIX-reddog-$BRANCH_NAME-$RG_LOCATION
 
 # Delete AKV SP
-SP_APPID=$(az ad sp list --display-name "http://sp-$RG_NAME.microsoft.com" | jq -r .[].appId)
+SP_APPID=$(az ad sp list --display-name "http://sp-$RG_NAME.microsoft.com" -o json | jq -r .[].appId)
 az ad sp delete --id $SP_APPID || true
 
 # Delete Branch
