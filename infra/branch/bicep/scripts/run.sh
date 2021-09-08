@@ -138,7 +138,7 @@ az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encodin
 # copy pfx file to jump box and create secret there
 scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
 # Set k8s secret from jumpbox
-run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx"
+run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
 az k8s-configuration create --name $RG_NAME-branch-deps \
 --cluster-name $RG_NAME-branch \
@@ -147,7 +147,7 @@ az k8s-configuration create --name $RG_NAME-branch-deps \
 --cluster-type connectedClusters \
 --operator-instance-name flux \
 --operator-namespace flux \
---operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true' \
+--operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=sg-branch-infra --manifest-generation=true' \
 --enable-helm-operator \
 --helm-operator-params='--set helm.versions=v3' \
 --repository-url git@github.com:Azure/reddog-retail-demo.git \
@@ -164,7 +164,7 @@ az k8s-configuration create --name $RG_NAME-branch-base \
 --cluster-type connectedClusters \
 --operator-instance-name base \
 --operator-namespace reddog-retail \
---operator-params='--git-readonly --git-path=manifests/branch/base --git-branch=main --manifest-generation=true' \
+--operator-params='--git-readonly --git-path=manifests/branch/base --git-branch=sg-branch-infra --manifest-generation=true' \
 --enable-helm-operator \
 --helm-operator-params='--set helm.versions=v3' \
 --repository-url git@github.com:Azure/reddog-retail-demo.git \
