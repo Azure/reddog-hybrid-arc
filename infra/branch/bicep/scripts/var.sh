@@ -26,7 +26,7 @@ if test -f "$SSH_KEY_PATH/$SSH_KEY_NAME"; then
 else
 	echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
 	echo "Creating ssh key directory..."
-	mkdir $SSH_KEY_PATH
+	mkdir -p $SSH_KEY_PATH
 	echo "Generating ssh key..."
 	ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
 	chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
