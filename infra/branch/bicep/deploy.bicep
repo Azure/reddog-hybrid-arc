@@ -36,6 +36,10 @@ param adminUsername string
 param adminPublicKey string
 param k3sToken string
 
+// KeyVault Secrets
+param rabbitmqconnectionstring string
+param redispassword           string
+
 // Variables
 var name = '${prefix}-k3s'
 var controlName = '${name}-control'
@@ -78,6 +82,22 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
   }
 }
 
+resource receiptstorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+  name: '${prefix}receipts'
+  location: resourceGroup().location
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+}
+
+resource receiptscontainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-04-01' = {
+  name: '${receiptstorage.name}/default/receipts'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 module control 'modules/k3s/control.bicep' = {
   name: '${controlName}-deployment'
   params: {
@@ -115,7 +135,7 @@ module workers 'modules/k3s/workers.bicep' = {
 }
 
 module keyvault 'modules/keyvault.bicep' = {
-  name: 'keyvault'
+  name: '${prefix}-kv'
   params: {
     prefix: prefix
     accessPolicies: [
@@ -135,11 +155,43 @@ module keyvault 'modules/keyvault.bicep' = {
         permissions: {
           secrets: [
             'get'
+            'list'
             'set'
           ]
         }
       }
     ]
+  }
+}
+
+
+resource rabbitmqsecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/rabbitmq-connectionstring'
+  properties: {
+    value: rabbitmqconnectionstring
+  }
+}
+
+resource redissecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/redis-password'
+  properties: {
+    value: redispassword
+  }
+}
+
+resource blobstoragesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/blob-storage-key'
+  properties: {
+    value: receiptstorage.listKeys().keys[0].value
   }
 }
 
