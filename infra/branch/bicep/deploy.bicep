@@ -185,7 +185,27 @@ resource redissecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
   }
 }
 
-resource blobstoragesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+resource blobstoragenamesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/storage-account-name'
+  properties: {
+    value: receiptstorage.name
+  }
+}
+
+resource blobstoragecontainernamesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/storage-container-name'
+  properties: {
+    value: receiptscontainer.name
+  }
+}
+
+resource blobstoragekeysecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
   dependsOn: [
     keyvault
   ]
@@ -201,5 +221,6 @@ output controlName string = controlName
 output jumpVMName string = jump.outputs.jumpVMName
 output userAssignedMIAppID string = userAssignedMI.properties.clientId
 output keyvaultName string = keyvault.outputs.name
+output storageAccountName string = receiptstorage.name
 
 
