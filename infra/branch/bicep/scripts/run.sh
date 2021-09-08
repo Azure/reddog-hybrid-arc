@@ -59,7 +59,9 @@ az deployment group create \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" \
-  --parameters currentUserId="$CURRENT_USER_ID"
+  --parameters currentUserId="$CURRENT_USER_ID" \
+  --parameters rabbitmqconnectionstring="amqp://user:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
+  --parameters redispassword=$REDIS_PASSWD
 
 # Save deployment outputs
 mkdir -p outputs
@@ -89,7 +91,7 @@ run_on_jumpbox () {
 
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
-scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
+scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa || true
 
 # Execute setup script on jump server
 # Get the host name for the control host
@@ -138,7 +140,7 @@ scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USE
 # Set k8s secret from jumpbox
 run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx"
 
-az k8s-configuration create --name $RG_NAME-branch \
+az k8s-configuration create --name $RG_NAME-branch-deps \
 --cluster-name $RG_NAME-branch \
 --resource-group $RG_NAME \
 --scope cluster \
@@ -146,6 +148,23 @@ az k8s-configuration create --name $RG_NAME-branch \
 --operator-instance-name flux \
 --operator-namespace flux \
 --operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true' \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key "$(cat arc-priv-key-b64)"
+
+# Wait 2 minutes for deps to deploy
+echo "Waiting 90seconds for Dependencies to deploy before installing base reddog-retail configs"
+sleep 90
+
+az k8s-configuration create --name $RG_NAME-branch-base \
+--cluster-name $RG_NAME-branch \
+--resource-group $RG_NAME \
+--scope namespace \
+--cluster-type connectedClusters \
+--operator-instance-name base \
+--operator-namespace reddog-retail \
+--operator-params='--git-readonly --git-path=manifests/branch/base --git-branch=main --manifest-generation=true' \
 --enable-helm-operator \
 --helm-operator-params='--set helm.versions=v3' \
 --repository-url git@github.com:Azure/reddog-retail-demo.git \
@@ -160,4 +179,3 @@ echo '****************************************************'
 # Execute Functions
 show_params
 create_branches
-
