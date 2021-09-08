@@ -60,7 +60,7 @@ az deployment group create \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" \
   --parameters currentUserId="$CURRENT_USER_ID" \
-  --parameters rabbitmqconnectionstring="amqp://user:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
+  --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
   --parameters redispassword=$REDIS_PASSWD
 
 # Save deployment outputs
