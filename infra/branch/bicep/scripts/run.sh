@@ -67,6 +67,9 @@ az deployment group create \
 mkdir -p outputs
 az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
 
+CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
+CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
+
 # Get the host name for the control host
 JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
 echo "Jump Host Name: $JUMP_VM_NAME"
@@ -173,8 +176,10 @@ az k8s-configuration create --name $RG_NAME-branch-base \
 echo '****************************************************'
 echo 'Deployment Complete!'
 echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME"
+echo "Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081"
 echo '****************************************************'
 }
+
 
 # Execute Functions
 show_params

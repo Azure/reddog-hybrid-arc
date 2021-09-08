@@ -192,3 +192,6 @@ resource workers 'Microsoft.Compute/virtualMachineScaleSets@2021-03-01' = {
    }
   
 }
+
+output publicIP string = pubip.properties.ipAddress
+output fqdn string = pubip.properties.dnsSettings.fqdn
