@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: virtual-customers
-  namespace: contoso-health
+  namespace: <namespace>
 spec:
   template:
     spec:
@@ -10,4 +10,4 @@ spec:
       - name: virtual-customers
         env:
         - name: STORE_ID
-          value: Denver
+          value: <STORE_ID>
