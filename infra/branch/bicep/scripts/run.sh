@@ -154,8 +154,8 @@ az k8s-configuration create --name $RG_NAME-branch-deps \
 --ssh-private-key "$(cat arc-priv-key-b64)"
 
 # Wait 2 minutes for deps to deploy
-echo "Waiting 90seconds for Dependencies to deploy before installing base reddog-retail configs"
-sleep 90
+echo "Waiting 120 seconds for Dependencies to deploy before installing base reddog-retail configs"
+sleep 120 
 
 az k8s-configuration create --name $RG_NAME-branch-base \
 --cluster-name $RG_NAME-branch \
