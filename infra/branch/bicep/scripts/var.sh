@@ -19,6 +19,9 @@ export BRANCHES="$(echo $CONFIG | jq -c '.branches[]')"
 export K3S_TOKEN="$(echo $CONFIG | jq -r '.k3s_token')"
 export RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_mq_passwd')"
 export REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
+export SQL_ADMIN_USER_NAME="$(echo $CONFIG | jq -r '.sql_admin_user_name')"
+export SQL_ADMIN_PASSWD="$(echo $CONFIG | jq -r '.sql_admin_passwd')"
+
 
 #Generate ssh-key pair
 if test -f "$SSH_KEY_PATH/$SSH_KEY_NAME"; then

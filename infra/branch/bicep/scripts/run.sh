@@ -107,9 +107,10 @@ run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-gui
 echo "Creating Namespaces...."
 run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
 
-echo "Creating RabbitMQ and Redis Password Secrets...."
+echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
 run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
 run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+run_on_jumpbox "kubectl create secret generic -n mssql mssql --from-literal=SA_PASSWORD=$SQL_ADMIN_PASSWD"
 
 # Arc join the cluster
 # Get managd identity object id
