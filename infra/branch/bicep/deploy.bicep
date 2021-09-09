@@ -38,7 +38,8 @@ param k3sToken string
 
 // KeyVault Secrets
 param rabbitmqconnectionstring string
-param redispassword           string
+param redispassword            string
+param sqldbconnectionstring    string
 
 // Variables
 var name = '${prefix}-k3s'
@@ -212,6 +213,16 @@ resource blobstoragekeysecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-prev
   name: '${keyvault.name}/blob-storage-key'
   properties: {
     value: receiptstorage.listKeys().keys[0].value
+  }
+}
+
+resource sqlsecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/reddog-sql'
+  properties: {
+    value: sqldbconnectionstring
   }
 }
 

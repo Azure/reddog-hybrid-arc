@@ -1,8 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    name: sql
+  name: sql
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: mssql-data
-  namespace: mssql
+  namespace: sql
   # annotations:
   #   volume.beta.kubernetes.io/storage-class: azure-disk
 spec:
@@ -16,7 +23,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mssql-deployment
-  namespace: mssql
+  namespace: sql
 spec:
   replicas: 1
   selector:
@@ -58,7 +65,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mssql-deployment
-  namespace: mssql
+  namespace: sql
 spec:
   selector:
     app: mssql
