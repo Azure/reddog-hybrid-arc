@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Set Variables
@@ -23,18 +23,26 @@ export HUBNAME="$(echo $CONFIG | jq -r '.hub.hubName')"
 export RG_LOCATION="$(echo $CONFIG | jq -r '.hub.location')"
 export RG_NAME=$PREFIX-reddog-$HUBNAME-$RG_LOCATION
 
-#Generate ssh-key pair
-if test -f "$SSH_KEY_PATH/$SSH_KEY_NAME"; then
-    echo "$SSH_KEY_PATH/$SSH_KEY_NAME exists. Skipping SSH Key Gen"
+# Check if the cleanup flag is passed, and ignore the ssh_key step
+if [[ ! -k $1 && $1 == "cleanup" ]]
+then
+	echo "Running cleanup. Don't generate ssh keys."
 else
-	echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
-	echo "Creating ssh key directory..."
-	mkdir $SSH_KEY_PATH
-	echo "Generating ssh key..."
-	ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
-	chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
+	# Generate ssh-key pair
+	if [ -f "$SSH_KEY_PATH/$SSH_KEY_NAME" ] 
+	then
+		echo "$SSH_KEY_PATH/$SSH_KEY_NAME exists. Skipping SSH Key Gen"
+	else
+		echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
+		echo "Creating ssh key directory..."
+		mkdir $SSH_KEY_PATH
+		echo "Generating ssh key..."
+		ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
+		chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME
 
+	fi
 fi
+
 export SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
 export SSH_PUB_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME.pub)"
 # Get the current user Object ID
