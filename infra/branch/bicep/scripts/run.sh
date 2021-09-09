@@ -106,7 +106,7 @@ run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-gui
 
 # Deploy initial cluster resources
 echo "Creating Namespaces...."
-run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
+run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
 
 echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
 run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
