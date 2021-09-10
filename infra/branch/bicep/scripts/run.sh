@@ -62,7 +62,7 @@ az deployment group create \
   --parameters currentUserId="$CURRENT_USER_ID" \
   --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
   --parameters redispassword=$REDIS_PASSWD \
-  --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=sa;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+  --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
 
 # Save deployment outputs
 mkdir -p outputs
@@ -163,6 +163,23 @@ az k8s-configuration create --name $RG_NAME-branch-deps \
 # Wait 2 minutes for deps to deploy
 echo "Waiting 120 seconds for Dependencies to deploy before installing base reddog-retail configs"
 sleep 120 
+
+# Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
+run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+
+echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
+
+echo "
+create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+create user $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+grant create table to $SQL_ADMIN_USER_NAME;
+grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
+ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
+CREATE DATABASE reddog;" | run_on_jumpbox "cat > temp.sql"
+
+run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U sa -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
+
+echo "Done SQL setup"
 
 az k8s-configuration create --name $RG_NAME-branch-base \
 --cluster-name $RG_NAME-branch \
