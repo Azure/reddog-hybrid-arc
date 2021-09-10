@@ -122,3 +122,7 @@ infra/k3s/bicep/ssh_keys/**
 
 ssh_keys/
 outputs/
+
+infra/config.json
+infra/branch/bicep/scripts/config.json
+infra/hub/bicep/scripts/config.json

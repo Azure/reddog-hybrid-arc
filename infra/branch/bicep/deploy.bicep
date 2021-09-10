@@ -36,6 +36,11 @@ param adminUsername string
 param adminPublicKey string
 param k3sToken string
 
+// KeyVault Secrets
+param rabbitmqconnectionstring string
+param redispassword            string
+param sqldbconnectionstring    string
+
 // Variables
 var name = '${prefix}-k3s'
 var controlName = '${name}-control'
@@ -78,6 +83,22 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
   }
 }
 
+resource receiptstorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+  name: '${prefix}receipts'
+  location: resourceGroup().location
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+}
+
+resource receiptscontainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-04-01' = {
+  name: '${receiptstorage.name}/default/receipts'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 module control 'modules/k3s/control.bicep' = {
   name: '${controlName}-deployment'
   params: {
@@ -115,7 +136,7 @@ module workers 'modules/k3s/workers.bicep' = {
 }
 
 module keyvault 'modules/keyvault.bicep' = {
-  name: 'keyvault'
+  name: '${prefix}-kv'
   params: {
     prefix: prefix
     accessPolicies: [
@@ -135,11 +156,73 @@ module keyvault 'modules/keyvault.bicep' = {
         permissions: {
           secrets: [
             'get'
+            'list'
             'set'
           ]
         }
       }
     ]
+  }
+}
+
+
+resource rabbitmqsecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/rabbitmq-connectionstring'
+  properties: {
+    value: rabbitmqconnectionstring
+  }
+}
+
+resource redissecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/redis-password'
+  properties: {
+    value: redispassword
+  }
+}
+
+resource blobstoragenamesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/storage-account-name'
+  properties: {
+    value: receiptstorage.name
+  }
+}
+
+resource blobstoragecontainernamesecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/storage-container-name'
+  properties: {
+    value: receiptscontainer.name
+  }
+}
+
+resource blobstoragekeysecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/blob-storage-key'
+  properties: {
+    value: receiptstorage.listKeys().keys[0].value
+  }
+}
+
+resource sqlsecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
+  dependsOn: [
+    keyvault
+  ]
+  name: '${keyvault.name}/reddog-sql'
+  properties: {
+    value: sqldbconnectionstring
   }
 }
 
@@ -149,5 +232,8 @@ output controlName string = controlName
 output jumpVMName string = jump.outputs.jumpVMName
 output userAssignedMIAppID string = userAssignedMI.properties.clientId
 output keyvaultName string = keyvault.outputs.name
+output storageAccountName string = receiptstorage.name
+output clusterIP string = workers.outputs.publicIP
+output clusterFQDN string = workers.outputs.fqdn
 
 

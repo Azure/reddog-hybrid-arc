@@ -8,9 +8,13 @@ spec:
   version: v1
   metadata:
     - name: storageAccount
-      value: briansaeastus
+      secretKeyRef:
+        name: storage-account-name
+        key: storage-account-name
     - name: container
-      value: receipts
+      secretKeyRef:
+        name: storage-container-name
+        key: storage-container-name
     - name: storageAccessKey
       secretKeyRef:
         name: blob-storage-key

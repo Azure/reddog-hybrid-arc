@@ -42,7 +42,7 @@ wait
 
 # Create Branch
 create_branch() {
-    # Set the Subscriptoin
+# Set the Subscriptoin
 az account set --subscription $SUBSCRIPTION_ID
 
 # Create the Resource Group to deploy the Webinar Environment
@@ -59,11 +59,17 @@ az deployment group create \
   --parameters k3sToken="$K3S_TOKEN" \
   --parameters adminUsername="$ADMIN_USER_NAME" \
   --parameters adminPublicKey="$SSH_PUB_KEY" \
-  --parameters currentUserId="$CURRENT_USER_ID"
+  --parameters currentUserId="$CURRENT_USER_ID" \
+  --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
+  --parameters redispassword=$REDIS_PASSWD \
+  --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
 
 # Save deployment outputs
 mkdir -p outputs
 az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
+
+CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
+CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
 
 # Get the host name for the control host
 JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
@@ -89,7 +95,7 @@ run_on_jumpbox () {
 
 # Copy the private key up to the jump server to be used to access the rest of the nodes
 echo "Copying private key to jump server..."
-scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
+scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa || true
 
 # Execute setup script on jump server
 # Get the host name for the control host
@@ -100,11 +106,12 @@ run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-gui
 
 # Deploy initial cluster resources
 echo "Creating Namespaces...."
-run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
+run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
 
-echo "Creating RabbitMQ and Redis Password Secrets...."
-run_on_jumpbox "kubectl create secret generic -n rabbitmq rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD"
-run_on_jumpbox "kubectl create secret generic -n redis redis-password --from-literal=redis-password=$REDIS_PASSWD"
+echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
+run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
+run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
+run_on_jumpbox "kubectl create secret generic mssql --from-literal=SA_PASSWORD=$SQL_ADMIN_PASSWD -n sql "
 
 # Arc join the cluster
 # Get managd identity object id
@@ -136,16 +143,52 @@ az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encodin
 # copy pfx file to jump box and create secret there
 scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
 # Set k8s secret from jumpbox
-run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx"
+run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
-az k8s-configuration create --name $RG_NAME-branch \
+CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+az k8s-configuration create --name $RG_NAME-branch-deps \
 --cluster-name $RG_NAME-branch \
 --resource-group $RG_NAME \
 --scope cluster \
 --cluster-type connectedClusters \
 --operator-instance-name flux \
 --operator-namespace flux \
---operator-params='--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true' \
+--operator-params="--git-readonly --git-path=manifests/branch/dependencies --git-branch=$CURRENT_GIT_BRANCH --manifest-generation=true" \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key "$(cat arc-priv-key-b64)"
+
+# Wait 2 minutes for deps to deploy
+echo "Waiting 120 seconds for Dependencies to deploy before installing base reddog-retail configs"
+sleep 120 
+
+# Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
+run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+
+echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
+
+echo "
+create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+create user $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+grant create table to $SQL_ADMIN_USER_NAME;
+grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
+ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
+CREATE DATABASE reddog;" | run_on_jumpbox "cat > temp.sql"
+
+run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U sa -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
+
+echo "Done SQL setup"
+
+az k8s-configuration create --name $RG_NAME-branch-base \
+--cluster-name $RG_NAME-branch \
+--resource-group $RG_NAME \
+--scope namespace \
+--cluster-type connectedClusters \
+--operator-instance-name base \
+--operator-namespace reddog-retail \
+--operator-params="--git-readonly --git-path=manifests/branch/base --git-branch=$CURRENT_GIT_BRANCH --manifest-generation=true" \
 --enable-helm-operator \
 --helm-operator-params='--set helm.versions=v3' \
 --repository-url git@github.com:Azure/reddog-retail-demo.git \
@@ -154,10 +197,11 @@ az k8s-configuration create --name $RG_NAME-branch \
 echo '****************************************************'
 echo 'Deployment Complete!'
 echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME"
+echo "Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081"
 echo '****************************************************'
 }
+
 
 # Execute Functions
 show_params
 create_branches
-
