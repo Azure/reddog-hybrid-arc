@@ -204,10 +204,13 @@ create_branch() {
   use reddog;
   go
   create user $SQL_ADMIN_USER_NAME for login $SQL_ADMIN_USER_NAME;
+  go
   create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+  go
   grant create table to $SQL_ADMIN_USER_NAME;
   grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
-  ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;" | run_on_jumpbox "cat > temp.sql"
+  ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
+  go" | run_on_jumpbox "cat > temp.sql"
 
   run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U SA -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
 
