@@ -62,7 +62,7 @@ az deployment group create \
   --parameters currentUserId="$CURRENT_USER_ID" \
   --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
   --parameters redispassword=$REDIS_PASSWD \
-  --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=reddoguser;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+  --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=sa;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
 
 # Save deployment outputs
 mkdir -p outputs
