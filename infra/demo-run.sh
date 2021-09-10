@@ -1,15 +1,18 @@
-#! /bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
 
 az config set extension.use_dynamic_install=yes_without_prompt
 
 ## Hub
-export HUB_PATH="hub/bicep"
-export BICEP_FILE="$HUB_PATH/deploy.bicep"
+HUB_PATH="hub/bicep"
+BICEP_FILE="$HUB_PATH/deploy.bicep"
+export HUB_PATH BICEP_FILE
 
 bash "$HUB_PATH/scripts/run.sh"
 
 ## Branch
-export BRANCH_PATH="branch/bicep"
-export BICEP_FILE="$BRANCH_PATH/deploy.bicep"
+BRANCH_PATH="branch/bicep"
+BICEP_FILE="$BRANCH_PATH/deploy.bicep"
+export BRANCH_PATH BICEP_FILE
 
 bash "$BRANCH_PATH/scripts/run.sh"
