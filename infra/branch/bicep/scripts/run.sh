@@ -199,8 +199,10 @@ create_branch() {
   echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
 
   echo "
-  CREATE DATABASE reddog;
+  create database reddog;
+  go
   use reddog;
+  go
   create user $SQL_ADMIN_USER_NAME for login $SQL_ADMIN_USER_NAME;
   create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
   grant create table to $SQL_ADMIN_USER_NAME;
