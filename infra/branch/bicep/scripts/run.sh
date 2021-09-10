@@ -170,12 +170,13 @@ run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo ap
 echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
 
 echo "
+CREATE DATABASE reddog;
+use reddog;
 create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
-create user $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+create user $SQL_ADMIN_USER_NAME for login $SQL_ADMIN_USER_NAME;
 grant create table to $SQL_ADMIN_USER_NAME;
 grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
-ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
-CREATE DATABASE reddog;" | run_on_jumpbox "cat > temp.sql"
+ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;" | run_on_jumpbox "cat > temp.sql"
 
 run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U sa -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
 
