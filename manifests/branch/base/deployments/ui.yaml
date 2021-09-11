@@ -29,7 +29,10 @@ spec:
           - name: IS_CORP
             value: "false"          
           - name: STORE_ID
-            value: Vail
+            valueFrom:
+              secretKeyRef:
+                  name: branch.config
+                  key: store_id
 ---
 apiVersion: v1
 kind: Service

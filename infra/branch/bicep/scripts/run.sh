@@ -137,6 +137,9 @@ create_branch() {
   echo "Creating Namespaces...."
   run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
 
+  # Save location info
+  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME"
+
   echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
   run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
