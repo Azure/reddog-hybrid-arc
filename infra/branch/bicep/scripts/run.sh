@@ -137,11 +137,10 @@ create_branch() {
   echo "Creating Namespaces...."
   run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
 
-  # Save location info
-  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME"
-  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=makeline_base_url=$CLUSTER_IP_ADDRESS:8082"
-  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=accounting_base_url=$CLUSTER_IP_ADDRESS:8083"
-
+  # Create branch config secrets
+  echo "Create branch config secrets"
+  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=$CLUSTER_IP_ADDRESS:8082 --from-literal=accounting_base_url=$CLUSTER_IP_ADDRESS:8083"
+  
   echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
   run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
@@ -194,13 +193,13 @@ create_branch() {
     --repository-url git@github.com:Azure/reddog-retail-demo.git \
     --ssh-private-key "$(cat arc-priv-key-b64)"
 
+  # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
+  run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+
   SECONDS="150"
   # Wait 2 minutes for deps to deploy
   echo "Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs"
   sleep $SECONDS 
-
-  # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
-  run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
 
   echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
 

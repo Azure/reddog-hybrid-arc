@@ -6,7 +6,7 @@ metadata:
   labels:
     name: make-line-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
   - name: http
     port: 8082
@@ -22,7 +22,7 @@ metadata:
   labels:
     name: accounting-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
   - name: http
     port: 8083
