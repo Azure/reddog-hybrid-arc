@@ -196,7 +196,7 @@ create_branch() {
   # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
   run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
 
-  SECONDS="150"
+  SECONDS="120"
   # Wait 2 minutes for deps to deploy
   echo "Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs"
   sleep $SECONDS 
