@@ -133,7 +133,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
   properties: {
     securityRules: [
       {
-        name: 'allow-inet-inbound-${uiPort}'
+        name: 'allow-inet-inbound-ui-${uiPort}'
         properties: {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${uiPort}'
@@ -142,6 +142,34 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${uiPort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-makeline-${makelinePort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${makelinePort}'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${makelinePort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-accounting-{accountingPort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${accountingPort}'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${accountingPort}'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }
