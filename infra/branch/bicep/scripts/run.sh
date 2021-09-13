@@ -139,6 +139,8 @@ create_branch() {
 
   # Save location info
   run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME"
+  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=makeline_base_url=$CLUSTER_IP_ADDRESS:8082"
+  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=accounting_base_url=$CLUSTER_IP_ADDRESS:8083"
 
   echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"

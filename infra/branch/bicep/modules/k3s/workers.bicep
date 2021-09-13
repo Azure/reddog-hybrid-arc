@@ -20,6 +20,8 @@ param k3sToken string
 var lbName = '${name}-lb'
 
 var uiPort = 8081
+var makelinePort = 8082
+var accountingPort = 8083
 
 var customData = base64(format('''
 #cloud-config
@@ -80,6 +82,38 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
           }
           frontendPort: uiPort
           backendPort: uiPort
+          protocol: 'Tcp'
+        }
+      }  
+      {
+        name: 'makeline-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: makelinePort
+          backendPort: makelinePort
+          protocol: 'Tcp'
+        }
+      }  
+      {
+        name: 'accounting-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: accountingPort
+          backendPort: accountingPort
           protocol: 'Tcp'
         }
       }  
