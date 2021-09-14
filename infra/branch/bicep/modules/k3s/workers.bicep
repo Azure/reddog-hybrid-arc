@@ -152,7 +152,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${makelinePort}'
           direction: 'Inbound'
-          priority: 100
+          priority: 110
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${makelinePort}'
@@ -166,7 +166,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${accountingPort}'
           direction: 'Inbound'
-          priority: 100
+          priority: 120
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${accountingPort}'
