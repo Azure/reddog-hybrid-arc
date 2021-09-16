@@ -17,7 +17,8 @@ runcmd:
   - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
   - sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
   # Install helm
-  - curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  - cd /tmp; wget -O helm.tar.gz https://get.helm.sh/helm-v3.6.3-linux-amd64.tar.gz; tar -xvf helm.tar.gz; mv linux-amd64/helm /usr/local/bin/helm
+  # curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
   # Install Azure CLI
   - curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
   # Create init done file

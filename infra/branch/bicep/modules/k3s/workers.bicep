@@ -20,6 +20,8 @@ param k3sToken string
 var lbName = '${name}-lb'
 
 var uiPort = 8081
+var makelinePort = 8082
+var accountingPort = 8083
 
 var customData = base64(format('''
 #cloud-config
@@ -83,6 +85,38 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
           protocol: 'Tcp'
         }
       }  
+      {
+        name: 'makeline-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: makelinePort
+          backendPort: makelinePort
+          protocol: 'Tcp'
+        }
+      }  
+      {
+        name: 'accounting-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: accountingPort
+          backendPort: accountingPort
+          protocol: 'Tcp'
+        }
+      }  
     ]
     // outboundRules: [
       
@@ -99,7 +133,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
   properties: {
     securityRules: [
       {
-        name: 'allow-inet-inbound-${uiPort}'
+        name: 'allow-inet-inbound-ui-${uiPort}'
         properties: {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${uiPort}'
@@ -108,6 +142,34 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${uiPort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-makeline-${makelinePort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${makelinePort}'
+          direction: 'Inbound'
+          priority: 110
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${makelinePort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-accounting-{accountingPort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${accountingPort}'
+          direction: 'Inbound'
+          priority: 120
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${accountingPort}'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }

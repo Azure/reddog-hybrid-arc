@@ -6,10 +6,10 @@ metadata:
   labels:
     name: make-line-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
   - name: http
-    port: 80
+    port: 8082
     targetPort: 80
   selector:
     app: make-line-service
@@ -22,10 +22,10 @@ metadata:
   labels:
     name: accounting-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
   - name: http
-    port: 80
+    port: 8083
     targetPort: 80
   selector:
     app: accounting-service  
