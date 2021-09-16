@@ -25,5 +25,5 @@ do
 
     # Delete Branch
     echo "Deleting Resource Group: $RG_NAME"
-    az group delete -n $RG_NAME -y --no-wait
+    az group delete -n $RG_NAME --subscription $SUBSCRIPTION_ID -y --no-wait
 done
