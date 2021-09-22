@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u 
+#set -u 
 
 # check if all of the required variables are set. if not, exit 1.
 check_global_variables() {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-set -u 
+#set -u 
 
 # check if all of the required variables are set. if not, exit 1.
 check_global_variables() {
     local _global_vars
 	_global_vars=(
-    	ADMIN_USER_NAME BRANCHES CURRENT_USER_ID HUB_NAME K3S_TOKEN PREFIX RABBIT_MQ_PASSWD  
+    	ADMIN_USER_NAME CURRENT_USER_ID HUB_NAME K3S_TOKEN PREFIX RABBIT_MQ_PASSWD  
     	REDIS_PASSWD RG_LOCATION RG_NAME SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME SUBSCRIPTION_ID TENANT_ID
     )
     

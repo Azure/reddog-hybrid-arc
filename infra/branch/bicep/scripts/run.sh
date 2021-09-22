@@ -2,7 +2,7 @@
 # Requirements:
 # - Azure CLI
 # - jq
-set -Eeu -o pipefail
+#set -Eeu -o pipefail
 
 # inherit_exit is available on bash >= 4
 if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
