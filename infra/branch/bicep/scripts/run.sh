@@ -2,7 +2,7 @@
 # Requirements:
 # - Azure CLI
 # - jq
-set -Ee -o pipefail
+set -Eeu -o pipefail
 
 # inherit_exit is available on bash >= 4
 if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
@@ -11,8 +11,11 @@ fi
 trap "echo ERROR: Please check the error messages above." ERR
 
 check_dependencies() {
+  local _DEP_FLAG _NEEDED
+
   # check if the dependencies are installed
   _NEEDED="az jq"
+  _DEP_FLAG=false
 
   echo -e "Checking dependencies ...\n"
   for i in seq ${_NEEDED}
