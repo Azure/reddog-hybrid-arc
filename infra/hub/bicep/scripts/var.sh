@@ -54,7 +54,7 @@ CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
 export CURRENT_USER_ID
 
 # check if all of the global variables are set before proceeding
-check_global_variables
+# check_global_variables
 
 load_ssh_keys() {
 	SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"
