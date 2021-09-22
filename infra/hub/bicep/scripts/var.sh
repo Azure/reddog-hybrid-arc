@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
+#set -u 
+
+# check if all of the required variables are set. if not, exit 1.
+check_global_variables() {
+    local _global_vars
+	_global_vars=(
+    	ADMIN_USER_NAME CURRENT_USER_ID HUB_NAME K3S_TOKEN PREFIX RABBIT_MQ_PASSWD  
+    	REDIS_PASSWD RG_LOCATION RG_NAME SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME SUBSCRIPTION_ID TENANT_ID
+    )
+    
+    for var in ${_global_vars[@]} 
+    do
+        if [[ -z "${!var}"  || "${!var}" == "null" ]]; then
+    	    echo "${var} is not set. Please check your config.json"
+	    exit 1
+	fi
+    done
+}
+
 
 # Set Variables
 CONFIG="$(cat config.json | jq -r .)"
@@ -33,6 +52,9 @@ export RG_LOCATION RG_NAME
 # Get the current user Object ID
 CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
 export CURRENT_USER_ID
+
+# check if all of the global variables are set before proceeding
+check_global_variables
 
 load_ssh_keys() {
 	SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"

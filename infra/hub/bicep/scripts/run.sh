@@ -3,8 +3,12 @@
 # - Azure CLI
 # - jq
 
-set -Ee -o pipefail
-shopt -s inherit_errexit
+#set -Ee -o pipefail
+
+# inherit_exit is available on bash >= 4 
+if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
+	shopt -s inherit_errexit
+fi
 trap "echo ERROR: Please check the error messages above." ERR
 
 check_dependencies() {

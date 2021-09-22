@@ -2,13 +2,20 @@
 # Requirements:
 # - Azure CLI
 # - jq
-set -Ee -o pipefail
-shopt -s inherit_errexit
+#set -Eeu -o pipefail
+
+# inherit_exit is available on bash >= 4
+if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
+        shopt -s inherit_errexit
+fi
 trap "echo ERROR: Please check the error messages above." ERR
 
 check_dependencies() {
+  local _DEP_FLAG _NEEDED
+
   # check if the dependencies are installed
   _NEEDED="az jq"
+  _DEP_FLAG=false
 
   echo -e "Checking dependencies ...\n"
   for i in seq ${_NEEDED}
@@ -144,7 +151,7 @@ create_branch() {
   # Do not use Dapr
   # run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://$CLUSTER_IP_ADDRESS:8082 --from-literal=accounting_base_url=http://$CLUSTER_IP_ADDRESS:8083"
   # Use Dapr inside the UI pod
-  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://http://localhost:3500/v1.0/invoke/make-line-service/method --from-literal=accounting_base_url=http://localhost:3500/v1.0/invoke/accounting-service/method"
+  run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://localhost:3500/v1.0/invoke/make-line-service/method --from-literal=accounting_base_url=http://localhost:3500/v1.0/invoke/accounting-service/method"
 
   echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
