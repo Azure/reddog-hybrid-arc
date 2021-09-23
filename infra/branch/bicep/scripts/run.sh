@@ -199,7 +199,7 @@ create_branch() {
     --cluster-type connectedClusters \
     --operator-instance-name flux \
     --operator-namespace flux \
-    --operator-params="--git-readonly --git-path=manifests/branch/dependencies --git-branch=$CURRENT_GIT_BRANCH --manifest-generation=true" \
+    --operator-params="--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true" \
     --enable-helm-operator \
     --helm-operator-params='--set helm.versions=v3' \
     --repository-url git@github.com:Azure/reddog-retail-demo.git \
@@ -240,7 +240,7 @@ create_branch() {
     --cluster-type connectedClusters \
     --operator-instance-name base \
     --operator-namespace reddog-retail \
-    --operator-params="--git-readonly --git-path=manifests/branch/base --git-branch=$CURRENT_GIT_BRANCH --manifest-generation=true" \
+    --operator-params="--git-readonly --git-path=manifests/branch/base --git-branch=main --manifest-generation=true" \
     --enable-helm-operator \
     --helm-operator-params='--set helm.versions=v3' \
     --repository-url git@github.com:Azure/reddog-retail-demo.git \

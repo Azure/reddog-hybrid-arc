@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ui
-  namespace: contoso-health
+  namespace: reddog-retail
 spec:
   template:
     spec:
