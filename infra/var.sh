@@ -35,7 +35,7 @@ BRANCHES="$(echo $CONFIG | jq -c '.branches[]')"
 export BRANCHES
 
 K3S_TOKEN="$(echo $CONFIG | jq -r '.k3s_token')"
-RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_passwd')"
+RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_mq_passwd')"
 REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 export K3S_TOKEN RABBIT_MQ_PASSWD REDIS_PASSWD
 
