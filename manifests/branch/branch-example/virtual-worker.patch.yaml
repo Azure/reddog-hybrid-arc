@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: virtual-worker
-  namespace: <namespace>
+  namespace: reddog-retail
 spec:
   template:
     spec:
