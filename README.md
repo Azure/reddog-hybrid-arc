@@ -18,9 +18,6 @@ This repo contains the scripts, manifests, docs, etc. needed to deploy and run t
 
 ### Folder structure
 
-    /arc
-      Manifests and charts for Arc managed configs
-      
     /assets
       Items relating to this readme, i.e. images, diagrams
 
@@ -29,7 +26,12 @@ This repo contains the scripts, manifests, docs, etc. needed to deploy and run t
 
     /infra
       Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop
+    
+    /manifests
+      Manifests and charts for Arc managed configs
 
+    /rest-samples
+       Rest services used 
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
