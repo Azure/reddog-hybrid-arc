@@ -8,7 +8,9 @@ spec:
   version: v1
   metadata:
     - name: url
-      value: https://brian-hub-cosmos-eastus.documents.azure.com:443/
+      secretKeyRef:
+        name: cosmos-uri
+        key: cosmos-uri
     - name: database
       value: reddog
     - name: collection
