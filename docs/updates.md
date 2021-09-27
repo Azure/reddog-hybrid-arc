@@ -11,7 +11,6 @@ UI
 Corp Tx Service
 
 ```bash
-
 export RG_NAME=br2-reddog-corp-eastus
 export OUTPUT="./outputs/br-reddog-corp-eastus-bicep-outputs.json"
 export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
@@ -41,6 +40,13 @@ kubectl create ns reddog-retail
 
 kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID
 
+kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-br2-reddog-corp-eastus-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID
+
+# Zipkin
+kubectl create ns zipkin
+kubectl create deployment zipkin -n zipkin --image openzipkin/zipkin
+kubectl expose deployment zipkin -n zipkin --type LoadBalancer --port 9411
+
 # add Corp KV secrets
 blob-storage-key (password only)
 cosmos-primary-rw-key
@@ -48,10 +54,57 @@ cosmos-uri
 sb-root-connectionstring
 reddog-sql 
 
-# Zipkin?
+# SQL Server - must set firewall to allow Azure services
 
 # GitOps
+export AKSNAME=br2-hub-aks
+az connectedk8s connect -g $RG_NAME -n $AKSNAME --distribution aks
 
+az k8s-configuration create --name $RG_NAME-hub-deps \
+--cluster-name $AKSNAME \
+--resource-group $RG_NAME \
+--scope cluster \
+--cluster-type connectedClusters \
+--operator-instance-name flux \
+--operator-namespace flux \
+--operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=main --manifest-generation=true" \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key "$(cat arc-priv-key-b64)"
+
+az k8s-configuration create --name $RG_NAME-hub-base \
+--cluster-name $AKSNAME \
+--resource-group $RG_NAME \
+--scope namespace \
+--cluster-type connectedClusters \
+--operator-instance-name base \
+--operator-namespace reddog-retail \
+--operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=main --manifest-generation=true" \
+--repository-url git@github.com:Azure/reddog-retail-demo.git \
+--ssh-private-key "$(cat arc-priv-key-b64)"
+
+az k8s-configuration list --cluster-name $AKSNAME --resource-group $RG_NAME --cluster-type connectedClusters
+
+az k8s-configuration delete --cluster-name $AKSNAME --resource-group $RG_NAME --name $RG_NAME-hub-base --cluster-type connectedClusters
+
+```
+
+#### Corp Transfer Function
+
+```bash
+
+# Container
+docker login ghcr.io
+docker build -t ghcr.io/cloudnativegbb/paas-vnext/corp-transfer-service:1.0 .
+docker push ghcr.io/cloudnativegbb/paas-vnext/corp-transfer-service:1.0
+
+# Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
+kubectl apply -f ./manifests/corp-transfer-fx.yaml -n reddog-retail
+
+# Manually create 2 queues/bindings in Rabbit MQ
+corp-transfer-orders
+corp-transfer-ordercompleted
 
 
 ```
