@@ -1,5 +1,64 @@
 ## Updates
 
+#### Corp 
+
+* KV cert
+* KV secrets 
+GitOps dependencies (Dapr)
+GitOps app
+SQL Setup
+UI 
+Corp Tx Service
+
+```bash
+
+export RG_NAME=br2-reddog-corp-eastus
+export OUTPUT="./outputs/br-reddog-corp-eastus-bicep-outputs.json"
+export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+
+## Create SP for Key Vault Access (something not working here with JQ)
+KV_NAME=$(cat $OUTPUT | jq -r .keyvault.value.name)
+KV_NAME="br2-hub-hub-kv-dhmg"
+echo "Key Vault: $KV_NAME"
+echo "Create SP for KV use..."
+az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
+## Get SP APP ID
+echo "Get SP_APPID..."
+SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
+SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+export SP_APPID=$(az ad sp show --id "http://sp-br2-reddog-corp-eastus.microsoft.com" -o tsv --query "appId")
+echo $SP_APPID
+echo "AKV SP_APPID: $SP_APPID"
+## Get SP Object ID
+echo "Get SP_OBJECTID..."
+SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+echo "AKV SP_OBJECTID: $SP_OBJECTID"
+# Assign SP to KV with GET permissions
+az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
+az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encoding base64 --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
+
+kubectl create ns reddog-retail
+
+kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID
+
+# add Corp KV secrets
+blob-storage-key (password only)
+cosmos-primary-rw-key
+cosmos-uri
+sb-root-connectionstring
+reddog-sql 
+
+# Zipkin?
+
+# GitOps
+
+
+
+```
+
+
+#### Lima / APIM 
+
 ```bash
 
 export RG_NAME=br-reddog-casper-eastus
