@@ -88,11 +88,39 @@ az k8s-configuration list --cluster-name $AKSNAME --resource-group $RG_NAME --cl
 
 az k8s-configuration delete --cluster-name $AKSNAME --resource-group $RG_NAME --name $RG_NAME-hub-base --cluster-type connectedClusters
 
+# UI
+Add env variables to Hub UI App Service
+NODE_ENV
+VUE_APP_ACCOUNTING_BASE_URL
+VUE_APP_IS_CORP
+VUE_APP_MAKELINE_BASE_URL
+VUE_APP_ORDER_BASE_URL
+VUE_APP_SITE_TITLE
+VUE_APP_SITE_TYPE
+VUE_APP_STORE_ID
+
+App Service - Setup container based deploy of UI
+
+ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:3844603
+https://reddog-corp.azurewebsites.net
 ```
 
 #### Corp Transfer Function
 
 ```bash
+
+ssh reddogadmin@40.71.190.175 -i ./ssh_keys/br2_id_rsa
+
+# Manually create 2 queues/bindings in Rabbit MQ
+corp-transfer-orders
+corp-transfer-ordercompleted
+
+# KEDA
+helm repo add kedacore https://kedacore.github.io/charts
+helm repo update
+helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda
+
+func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > func-deployment.yaml
 
 # Container
 docker login ghcr.io
@@ -100,12 +128,10 @@ docker build -t ghcr.io/cloudnativegbb/paas-vnext/corp-transfer-service:1.0 .
 docker push ghcr.io/cloudnativegbb/paas-vnext/corp-transfer-service:1.0
 
 # Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
+kubectl apply -f ./manifests/corp-transfer-secret.yaml -n reddog-retail
 kubectl apply -f ./manifests/corp-transfer-fx.yaml -n reddog-retail
 
-# Manually create 2 queues/bindings in Rabbit MQ
-corp-transfer-orders
-corp-transfer-ordercompleted
-
+http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081/#/dashboard
 
 ```
 
@@ -168,5 +194,21 @@ az k8s-extension create \
     --release-train preview
 
 az k8s-extension show --cluster-type connectedClusters --cluster-name $RG_NAME-branch --resource-group $RG_NAME --name apim-arc
+
+```
+
+#### Cleanup stuff
+
+```bash
+http://40.121.221.220:15672
+
+sqlcmd -S 10.128.1.4 -U reddogadmin -P "nJ0fqrQx7T^NZFl4sFf*U"
+
+export REDISIP="40.121.221.220"
+export REDISPWD="MyPassword123"
+redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 keys "loyalty*" | xargs redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 DEL
+redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 keys "make*" | xargs redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 DEL
+
+
 
 ```
