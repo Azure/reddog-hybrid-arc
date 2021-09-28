@@ -1,14 +1,29 @@
 ## Updates
 
+https://reddog-corp.azurewebsites.net
+http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081
+
+ssh reddogadmin@40.71.190.175 -i ./ssh_keys/br2_id_rsa
+
+accounting
+http://reddog-toronto-apim.azure-api.net/accounting
+
+make line
+http://reddog-toronto-apim.azure-api.net/makeline
+
+order
+http://reddog-toronto-apim.azure-api.net/order
+
 #### Corp 
 
-* KV cert
-* KV secrets 
+KV cert
+KV secrets 
 GitOps dependencies (Dapr)
 GitOps app
 SQL Setup
 UI 
 Corp Tx Service
+APIM
 
 ```bash
 export RG_NAME=br2-reddog-corp-eastus
@@ -92,6 +107,8 @@ az k8s-configuration delete --cluster-name $AKSNAME --resource-group $RG_NAME --
 Add env variables to Hub UI App Service
 NODE_ENV
 VUE_APP_ACCOUNTING_BASE_URL
+http://corp.accounting.brianredmond.io
+http://20.81.34.83:8083
 VUE_APP_IS_CORP
 VUE_APP_MAKELINE_BASE_URL
 VUE_APP_ORDER_BASE_URL
@@ -101,15 +118,12 @@ VUE_APP_STORE_ID
 
 App Service - Setup container based deploy of UI
 
-ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:3844603
-https://reddog-corp.azurewebsites.net
+
 ```
 
 #### Corp Transfer Function
 
 ```bash
-
-ssh reddogadmin@40.71.190.175 -i ./ssh_keys/br2_id_rsa
 
 # Manually create 2 queues/bindings in Rabbit MQ
 corp-transfer-orders
@@ -194,6 +208,25 @@ az k8s-extension create \
     --release-train preview
 
 az k8s-extension show --cluster-type connectedClusters --cluster-name $RG_NAME-branch --resource-group $RG_NAME --name apim-arc
+
+accounting
+http://40.121.221.220:8083/OrderMetrics
+http://40.121.221.220:8083/swagger/v1/swagger.json
+
+http://reddog-toronto-apim.azure-api.net/accounting
+
+make line
+http://40.121.221.220:8082/orders/toronto
+http://40.121.221.220:8082/swagger/v1/swagger.json
+
+http://reddog-toronto-apim.azure-api.net/makeline
+
+order
+http://40.121.221.220:8084/product
+http://40.121.221.220:8084/swagger/v1/swagger.json
+
+http://reddog-toronto-apim.azure-api.net/order
+
 
 ```
 
