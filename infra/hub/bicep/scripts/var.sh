@@ -49,12 +49,18 @@ RG_LOCATION="$(echo $CONFIG | jq -r '.hub.location')"
 RG_NAME=$PREFIX-reddog-$HUBNAME-$RG_LOCATION
 export RG_LOCATION RG_NAME
 
-# Get the current user Object ID
-CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
-export CURRENT_USER_ID
+# Get the current user Object ID                                                   
+if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then 
+        # running in cloud-shell. We can use the information on ACC_OID
+        CURRENT_USER_ID=$ACC_OID 
+else 
+        # running outside of cloud-shell. We need to retrieve the current user 
+        CURRENT_USER_ID=$(az ad signed-in-user show | jq -r .objectId)
+fi 
+export CURRENT_USER_ID 
 
 # check if all of the global variables are set before proceeding
-# check_global_variables
+check_global_variables
 
 load_ssh_keys() {
 	SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"

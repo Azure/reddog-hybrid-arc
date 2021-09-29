@@ -2,7 +2,6 @@
 # Requirements:
 # - Azure CLI
 # - jq
-
 #set -Ee -o pipefail
 
 # inherit_exit is available on bash >= 4 
@@ -15,7 +14,7 @@ check_dependencies() {
   # check if the dependencies are installed
   _NEEDED="az jq"
 
-  echo -e "Checking dependencies ...\n"
+  printf "Checking dependencies on the Hub ... "
   for i in seq ${_NEEDED}
     do
       if hash "$i" 2>/dev/null; then
@@ -31,6 +30,7 @@ check_dependencies() {
     echo -e "\nDependencies missing. Please fix that before proceeding"
     exit 1
   fi
+  printf "done.\n"
 }
 
 # Show Params
@@ -56,7 +56,7 @@ create_hub() {
   # Create the Resource Group to deploy the Webinar Environment
   az group create --name $RG_NAME --location $RG_LOCATION
 
-  echo "Deploying hub resources...."
+  echo "Deploying hub resources ..."
   az deployment group create \
     --name $ARM_DEPLOYMENT_NAME \
     --mode Incremental \
@@ -71,7 +71,7 @@ create_hub() {
 
   # Save deployment outputs
   mkdir -p outputs
-  az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
+  az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs | tee "./outputs/$RG_NAME-bicep-outputs.json"
 
   CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
   CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)

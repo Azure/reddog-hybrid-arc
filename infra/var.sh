@@ -40,7 +40,13 @@ REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 export K3S_TOKEN RABBIT_MQ_PASSWD REDIS_PASSWD
 
 # Get the current user Object ID
-CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
+if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
+	# running in cloud-shell. We can use the information on ACC_OID
+	CURRENT_USER_ID=$ACC_OID
+else
+	# running outside of cloud-shell. We need to retrieve the current user
+	CURRENT_USER_ID=$(az ad signed-in-user show | jq -r .objectId)
+fi
 export CURRENT_USER_ID
 
 # Set the Subscription
@@ -64,8 +70,11 @@ else
 		load_ssh_keys
 	else
 		echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
-		echo "Creating ssh key directory..."
-		mkdir $SSH_KEY_PATH
+		if [ ! -d "$SSH_KEY_PATH" ]
+		then
+			echo "Creating ssh key directory..."
+			mkdir $SSH_KEY_PATH
+		fi
 		echo "Generating ssh key..."
 		ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
 		chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME

@@ -5,8 +5,9 @@
 check_global_variables() {
     local _global_vars
 	_global_vars=(
-    	ADMIN_USER_NAME BRANCHES CURRENT_USER_ID K3S_TOKEN PREFIX RABBIT_MQ_PASSWD REDIS_PASSWD 
-    	SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME SUBSCRIPTION_ID TENANT_ID
+    	ADMIN_USER_NAME AZURE_LOGIN BRANCHES CURRENT_USER_ID K3S_TOKEN 
+	PREFIX RABBIT_MQ_PASSWD REDIS_PASSWD SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME 
+	SUBSCRIPTION_ID TENANT_ID
     )
     
     for var in ${_global_vars[@]} 
@@ -17,6 +18,9 @@ check_global_variables() {
 	fi
     done
 }
+
+AZURE_LOGIN=false
+export AZURE_LOGIN
 
 # Set and export Variables
 CONFIG="$(cat config.json | jq -r .)"
@@ -47,12 +51,18 @@ SQL_ADMIN_USER_NAME="$(echo $CONFIG | jq -r '.sql_admin_user_name')"
 SQL_ADMIN_PASSWD="$(echo $CONFIG | jq -r '.sql_admin_passwd')"
 export SQL_ADMIN_USER_NAME SQL_ADMIN_PASSWD
 
-# Get the current user Object ID
-CURRENT_USER_ID=$(az ad signed-in-user show -o json | jq -r .objectId)
-export CURRENT_USER_ID
+# Get the current user Object ID                                                   
+if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then 
+        # running in cloud-shell. We can use the information on ACC_OID
+        CURRENT_USER_ID=$ACC_OID 
+else 
+        # running outside of cloud-shell. We need to retrieve the current user 
+        CURRENT_USER_ID=$(az ad signed-in-user show | jq -r .objectId)
+fi 
+export CURRENT_USER_ID 
 
 # check if all of the global variables are set before proceeding
-#check_global_variables
+check_global_variables
 
 load_ssh_keys() {
 	SSH_PRIV_KEY="$(cat $SSH_KEY_PATH/$SSH_KEY_NAME)"

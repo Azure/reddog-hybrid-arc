@@ -17,7 +17,7 @@ check_dependencies() {
   _NEEDED="az jq"
   _DEP_FLAG=false
 
-  echo -e "Checking dependencies ...\n"
+  echo -e "Checking dependencies for the creation of the branches ...\n"
   for i in seq ${_NEEDED}
     do
       if hash "$i" 2>/dev/null; then
@@ -32,6 +32,23 @@ check_dependencies() {
   if [[ "${_DEP_FLAG}" == "true" ]]; then
     echo -e "\nDependencies missing. Please fix that before proceeding"
     exit 1
+  fi
+}
+
+check_for_cloud-shell() {
+  # in cloud-shell, you need to do az login as a workaround before 
+  # creating the service principal below. 
+  #
+  # Only run this code when the user invokes run.sh from this directory. 
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.*  && $AZURE_LOGIN == "false" ]]; then
+  	echo '****************************************************'
+        echo ' Please login to Azure before proceeding.'
+  	echo '****************************************************'
+        echo ' In cloud-shell, you need to do az login as a workaround before' 
+        echo ' creating the service principal below.' 
+        echo
+        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
+        az login
   fi
 }
 
@@ -67,12 +84,13 @@ create_branches() {
     mkdir -p logs
 
     # Create Branch
+
+    echo -e "\nWaiting for the $BRANCH_NAME branch creation to complete ..."
+    echo "Check the log files in ./logs/$RG_NAME.log for its creation status"
     create_branch > ./logs/$RG_NAME.log 2>&1 &
   done
 
   # wait for all pids
-  echo "Waiting for branch creation to complete..."
-  echo "Check the log files in ./logs for individual branch creation status"
   wait
 }
 
@@ -89,7 +107,7 @@ create_branch() {
   az group create --name $RG_NAME --location $RG_LOCATION
 
   # Deploy the jump server and K3s cluster
-  echo "Deploying branch office resources...."
+  echo "[branch: $BRANCH_NAME] - Deploying branch office resources ..." | tee /dev/tty
   az deployment group create \
     --name $ARM_DEPLOYMENT_NAME \
     --mode Incremental \
@@ -106,22 +124,22 @@ create_branch() {
 
   # Save deployment outputs
   mkdir -p outputs
-  az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs > "./outputs/$RG_NAME-bicep-outputs.json"
+  az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs | tee /dev/tty "./outputs/$RG_NAME-bicep-outputs.json"
 
   CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
   CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
 
   # Get the host name for the control host
   JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
-  echo "Jump Host Name: $JUMP_VM_NAME"
+  echo "Jump Host Name: $JUMP_VM_NAME" 
 
-  echo "Wait for jump server to start"
+  echo "[branch: $BRANCH_NAME] - Waiting for jump server to start" | tee /dev/tty
   while [[ "$(az vm list -d -g $RG_NAME -o tsv --query "[?name=='$JUMP_VM_NAME'].powerState")" != "VM running" ]]
   do
-  echo "Waiting...."
+  echo "Waiting ..."
     sleep 5
   done
-  echo "Jump Server Running!"
+  echo "[branch: $BRANCH_NAME] - Jump Server Running!" | tee /dev/tty
 
   # Give the VM a few more seconds to become available
   sleep 20
@@ -130,42 +148,45 @@ create_branch() {
   JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
 
   # Copy the private key up to the jump server to be used to access the rest of the nodes
-  echo "Copying private key to jump server..."
+  echo "[branch: $BRANCH_NAME] - Copying private key to jump server ..." | tee /dev/tty
   scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa || true
 
   # Execute setup script on jump server
   # Get the host name for the control host
   CONTROL_HOST_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .controlName.value)
   echo "Control Host Name: $CONTROL_HOST_NAME"
-  echo "Executing setup script on jump server...."
+  echo "[branch: $BRANCH_NAME] - Executing setup script on jump server ..." | tee /dev/tty
   run_on_jumpbox "curl -sfL https://raw.githubusercontent.com/swgriffith/azure-guides/master/temp/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
   # # Needed to temp fix the file permissions on the kubeconfig file - arc agent install checks the permissions and doesn't like previous 744
   # run_on_jumpbox "curl -sfL https://gist.githubusercontent.com/raykao/1b22f8a807eeda584137ac944c1ea2b9/raw/9d3bc2c52f268e202f708d0645b91f9fc768795e/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
 
   # Deploy initial cluster resources
-  echo "Creating Namespaces...."
+  echo "[branch: $BRANCH_NAME] - Creating Namespaces ..." | tee /dev/tty
   run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
 
   # Create branch config secrets
-  echo "Create branch config secrets"
+  echo "[branch: $BRANCH_NAME] - Creating branch config secrets" | tee /dev/tty
   # Do not use Dapr
   # run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://$CLUSTER_IP_ADDRESS:8082 --from-literal=accounting_base_url=http://$CLUSTER_IP_ADDRESS:8083"
   # Use Dapr inside the UI pod
   run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://localhost:3500/v1.0/invoke/make-line-service/method --from-literal=accounting_base_url=http://localhost:3500/v1.0/invoke/accounting-service/method"
 
-  echo "Creating RabbitMQ, Redis and MsSQL Password Secrets...."
+  echo "[branch: $BRANCH_NAME] - Creating RabbitMQ, Redis and MsSQL Password Secrets ..." | tee /dev/tty
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
   run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
   run_on_jumpbox "kubectl create secret generic mssql --from-literal=SA_PASSWORD=$SQL_ADMIN_PASSWD -n sql "
 
   # Arc join the cluster
-  # Get managd identity object id
+  # Get managed identity object id
+  MI_BASENAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value | sed 's/-kv.*//g')
+  MI_SUFFIX="branchManagedIdentity"
   MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
-  MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
+  #MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
+  MI_OBJ_ID=$(az  identity show -n ${MI_BASENAME}${MI_SUFFIX} -g $RG_NAME | jq -r .principalId)
   echo "User Assigned Managed Identity App ID: $MI_APP_ID"
   echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
-  echo "Arc joining the branch cluster..."
+  echo "[branch: $BRANCH_NAME] - Arc joining the branch cluster ..." | tee /dev/tty
   run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $RG_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
   ## Create SP for Key Vault Access
@@ -174,12 +195,12 @@ create_branch() {
   echo "Create SP for KV use..."
   az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
   ## Get SP APP ID
-  echo "Get SP_APPID..."
+  echo "Getting SP_APPID ..."
   SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
   SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
   echo "AKV SP_APPID: $SP_APPID"
   ## Get SP Object ID
-  echo "Get SP_OBJECTID..."
+  echo "Getting SP_OBJECTID ..."
   SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
   echo "AKV SP_OBJECTID: $SP_OBJECTID"
   # Assign SP to KV with GET permissions
@@ -206,14 +227,14 @@ create_branch() {
     --ssh-private-key "$(cat arc-priv-key-b64)"
 
   # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
-  run_on_jumpbox "curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+  run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
 
   SECONDS="90"
   # Wait 2 minutes for deps to deploy
-  echo "Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs"
+  echo "[branch: $BRANCH_NAME] - Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs" | tee /dev/tty
   sleep $SECONDS 
 
-  echo "Setup SQL User: $SQL_ADMIN_USER_NAME and DB"
+  echo "[branch: $BRANCH_NAME] - Setup SQL User: $SQL_ADMIN_USER_NAME and DB" | tee /dev/tty
 
   echo "
   create database reddog;
@@ -231,7 +252,7 @@ create_branch() {
 
   run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U SA -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
 
-  echo "Done SQL setup"
+  echo "[branch: $BRANCH_NAME] - Done SQL setup" | tee /dev/tty
 
   az k8s-configuration create --name $RG_NAME-branch-base \
     --cluster-name $RG_NAME-branch \
@@ -245,16 +266,25 @@ create_branch() {
     --helm-operator-params='--set helm.versions=v3' \
     --repository-url git@github.com:Azure/reddog-retail-demo.git \
     --ssh-private-key "$(cat arc-priv-key-b64)"
+  
+  # install some tools on the jumpbox
+  run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
+  run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
 
-  echo '****************************************************'
-  echo 'Deployment Complete!'
-  echo "Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME"
-  echo "Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081"
-  echo '****************************************************'
+  read -r -d '' COMPLETE_MESSAGE << EOM
+****************************************************
+[branch: $BRANCH_NAME] - Deployment Complete! 
+Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME
+Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
+****************************************************
+EOM
+ 
+  echo "$COMPLETE_MESSAGE" | tee /dev/tty
 }
 
 
 # Execute Functions
 check_dependencies
+check_for_cloud-shell
 show_params
 create_branches
