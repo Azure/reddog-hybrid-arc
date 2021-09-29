@@ -15,49 +15,31 @@ spec:
       labels:
         app: ui
       annotations:
-        dapr.io/enabled: "true"
-        dapr.io/app-id: "ui"
-        dapr.io/config: "reddog.config"
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: ui
+        dapr.io/config: reddog.config
     spec:
       containers:
         - name: ui
-          image: "ghcr.io/cloudnativegbb/paas-vnext/reddog-ui:latest"
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:458d00d
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
           env:
-          - name: VUE_APP_IS_CORP
-            value: "false"
-          - name: VUE_APP_SITE_TITLE
-            value: 'Red Dog :: Drug Store and Pharmacy'            
-          - name: VUE_APP_STORE_ID
-            valueFrom:
-              secretKeyRef:
+            - name: VUE_APP_IS_CORP
+              value: 'false'
+            - name: VUE_APP_STORE_ID
+              valueFrom:
+                secretKeyRef:
                   name: branch.config
                   key: store_id
-          - name: VUE_APP_MAKELINE_BASE_URL
-            valueFrom:
-              secretKeyRef:
+            - name: VUE_APP_MAKELINE_BASE_URL
+              valueFrom:
+                secretKeyRef:
                   name: branch.config
                   key: makeline_base_url
-          - name: VUE_APP_ACCOUNTING_BASE_URL
-            valueFrom:
-              secretKeyRef:
+            - name: VUE_APP_ACCOUNTING_BASE_URL
+              valueFrom:
+                secretKeyRef:
                   name: branch.config
                   key: accounting_base_url
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: reddog-retail-ui
-  namespace: reddog-retail  
-  labels:
-    name: reddog-retail-ui
-spec:
-  type: LoadBalancer
-  ports:
-  - name: http
-    port: 8081
-    targetPort: 8080
-  selector:
-    app: ui          
