@@ -23,7 +23,7 @@ This repo contains the scripts, manifests, docs, etc. needed to deploy and run t
 | /docs | Documentation markdown.     |
 | /infra   | Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop. |
 | /manifests | Manifests and charts for Arc managed configs. |
-| rest-sample | Rest services used. |
+| /rest-sample | Rest services used. |
 
 ## Contributing
 
