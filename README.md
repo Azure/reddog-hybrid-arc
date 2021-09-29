@@ -14,24 +14,17 @@ Application Architecture
 
 ### Contents
 
-This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the source code is maintained. 
+This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the application source code is maintained. 
 
 ### Folder structure
+| Folder      | Description                                                                                |
+|------------------|-------------------------------------------------------------------------------------------------------------|
+| /assets | Items relating to this readme, i.e. images, diagrams. |
+| /docs | Documentation markdown.     |
+| /infra   | Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop. |
+| /manifests | Manifests and charts for Arc managed configs. |
+| rest-sample | Rest services used. |
 
-    /assets
-      Items relating to this readme, i.e. images, diagrams
-
-    /docs
-      Documentation markdown
-
-    /infra
-      Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop
-    
-    /manifests
-      Manifests and charts for Arc managed configs
-
-    /rest-samples
-       Rest services used 
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
@@ -57,6 +50,7 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 
 ## Lets Begin!
 
-Once you are ready, please begin by installing the ![prerequisites](./prerequisites.md) and reading the ![customer story](customer-story.md)...
+Once you are ready, please begin by installing the [prerequisites](./prerequisites.md).  After that has completed, head over to the [docs](./docs) folder 
+and follow the deployment instructions there to deploy the solution.
 
 
