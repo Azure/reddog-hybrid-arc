@@ -1,5 +1,6 @@
 ## Quickstart
 
+##Set up
 Create branch in the [Reddog repo](https://github.com/Azure/reddog-retail-demo)
 
 Clone repo
@@ -14,6 +15,7 @@ Update the settings in the config.json file
 
 Set the var.sh values to match your environment
 
+## Portal and Cloud Shell
 Log into [Azure portal](https://portal.azure.com)
 
 Go to Cloud Shell terminal and select Bash
@@ -34,6 +36,7 @@ To execute deployment, go to:
 
 Follow prompts
 
+## Test it out
 Once the script has finished there should be a logs file at infra/branch/bicep/scripts/logs/name-of-your-rg.log
 
 Last line should have the output Jump box connection info: ssh reddogadmin@52.234.158.87 -i ./ssh_keys/rk1_id_rsa
