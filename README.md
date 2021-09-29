@@ -20,7 +20,6 @@ This repo contains the scripts, manifests, docs, etc. needed to deploy and run t
 | Folder      | Description                                                                                |
 |------------------|-------------------------------------------------------------------------------------------------------------|
 | /assets | Items relating to this readme, i.e. images, diagrams. |
-| /docs | Documentation markdown.     |
 | /infra   | Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop. |
 | /manifests | Manifests and charts for Arc managed configs. |
 | /rest-sample | Rest services used. |
@@ -50,7 +49,6 @@ Any use of third-party trademarks or logos are subject to those third-party's po
 
 ## Lets Begin!
 
-Once you are ready, please begin by installing the [prerequisites](./prerequisites.md).  After that has completed, head over to the [docs](./docs) folder 
-and follow the deployment instructions there to deploy the solution.
+Once you are ready, please begin by going to [Quickstart](./quickstart.md) and following the instructions there.
 
 
