@@ -1,6 +1,6 @@
 ## Quickstart
 
-##Set up
+## Set up
 Create branch in the [Reddog repo](https://github.com/Azure/reddog-retail-demo)
 
 Clone repo
