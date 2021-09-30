@@ -14,21 +14,15 @@ Application Architecture
 
 ### Contents
 
-This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the source code is maintained. 
+This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the application source code is maintained. 
 
 ### Folder structure
-
-    /arc
-      Manifests and charts for Arc managed configs
-      
-    /assets
-      Items relating to this readme, i.e. images, diagrams
-
-    /docs
-      Documentation markdown
-
-    /infra
-      Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop
+| Folder      | Description                                                                                |
+|------------------|-------------------------------------------------------------------------------------------------------------|
+| /assets | Items relating to this readme, i.e. images, diagrams. |
+| /infra   | Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop. |
+| /manifests | Manifests and charts for Arc managed configs. |
+| /rest-sample | Rest services used. |
 
 ## Contributing
 
@@ -51,3 +45,10 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+
+## Lets Begin!
+
+Once you are ready, please begin by going to [Quickstart](./quickstart.md) and following the instructions there.
+
+
