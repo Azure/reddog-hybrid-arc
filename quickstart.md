@@ -1,20 +1,5 @@
 ## Quickstart
 
-## Set up
-Create branch in the [Reddog repo](https://github.com/Azure/reddog-retail-demo)
-
-Clone repo
-
-In IDE go to infra/branch/bicep/scripts
-
-In editor, update the settings in the config.json file
-	- If the config.json file does not exist, copy config.json.example to a new config.json file
-
-Update the settings in the config.json file
-	- Fill out the missing details (sub ID and tenant ID)
-
-Set the var.sh values to match your environment
-
 ## Portal and Cloud Shell
 Log into [Azure portal](https://portal.azure.com)
 
@@ -31,7 +16,19 @@ git clone git@github.com:Azure/reddog-retail-demo.git
 To make sure you see reddog-retail-demo run:
 dir
 
-To execute deployment, go to: 
+Update config:
+cd infra/branch/bicep/scripts
+
+In editor, update the settings in the config.json file
+	- If the config.json file does not exist, copy config.json.example to a new config.json file
+
+Update the settings in the config.json file
+	- Fill out the missing details (sub ID and tenant ID)
+
+Set the var.sh values to match your environment
+
+
+To execute deployment: 
 ./reddog-retail-demo/infra/walk-the-dog.sh 
 
 Follow prompts
