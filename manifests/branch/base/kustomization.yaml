@@ -11,6 +11,7 @@ resources:
 - ./deployments/receipt-generation-service.yaml
 - ./deployments/ui.yaml
 - ./deployments/services-for-ui.yaml
+- ./deployments/ui-service.yaml
 - ./deployments/virtual-customers.yaml
 - ./deployments/virtual-worker.yaml
 - ./components/reddog.binding.receipt.yaml
