@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # set -eo pipefail
 
+########################################################################################
+AZURE_LOGIN=0
+########################################################################################
+trap exit SIGINT SIGTERM
+
 az config set extension.use_dynamic_install=yes_without_prompt
 
 # check for the required extensions
@@ -29,23 +34,40 @@ check_for_cloud-shell() {
         echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
         az login
   fi
+  # we are logged in at this point
+  AZURE_LOGIN=1
+  export AZURE_LOGIN
+}
+
+check_for_azure_login() {
+  # run a command against Azure to check if we are logged in already.
+  az group list
+  # save the return code from above. Anything different than 0 means we need to login
+  AZURE_LOGIN=$?
+
+  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
+      # not logged in. Initiate login process
+      az login
+      export AZURE_LOGIN
+  fi
 }
 
 check_dependencies
+check_for_azure_login
 check_for_cloud-shell
-AZURE_LOGIN=true
-export AZURE_LOGIN
 
-## Hub
-HUB_PATH="hub/bicep"
-BICEP_FILE="$HUB_PATH/deploy.bicep"
-export HUB_PATH BICEP_FILE
+if [[ ${AZURE_LOGIN} -eq 1 ]]; then
+    ## Hub
+    HUB_PATH="hub/bicep"
+    BICEP_FILE="$HUB_PATH/deploy.bicep"
+    export HUB_PATH BICEP_FILE
 
-bash "$HUB_PATH/scripts/run.sh"
+    bash "$HUB_PATH/scripts/run.sh"
 
-## Branch
-BRANCH_PATH="branch/bicep"
-BICEP_FILE="$BRANCH_PATH/deploy.bicep"
-export BRANCH_PATH BICEP_FILE
+    ## Branch
+    BRANCH_PATH="branch/bicep"
+    BICEP_FILE="$BRANCH_PATH/deploy.bicep"
+    export BRANCH_PATH BICEP_FILE
 
-bash "$BRANCH_PATH/scripts/run.sh"
+    bash "$BRANCH_PATH/scripts/run.sh"
+fi

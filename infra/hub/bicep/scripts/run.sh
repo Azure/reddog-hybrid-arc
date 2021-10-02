@@ -4,6 +4,44 @@
 # - jq
 #set -Ee -o pipefail
 
+########################################################################################
+AZURE_LOGIN=0 
+########################################################################################
+trap exit SIGINT SIGTERM
+
+# checks if we are running in cloud-shell.
+# if yes, we need to login to Azure first. Otherwise some commands will fail.
+check_for_cloud-shell() {
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
+	echo
+        echo '****************************************************'
+        echo ' Please login to Azure before proceeding.'
+        echo '****************************************************'
+        echo ' In cloud-shell, you need to do az login as a workaround before' 
+        echo ' creating the service principal below.' 
+        echo
+        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
+        az login
+  fi
+  # we are logged in at this point
+  AZURE_LOGIN=1
+  export AZURE_LOGIN
+}
+
+check_for_azure_login() {
+  # run a command against Azure to check if we are logged in already.
+  az group list
+  # save the return code from above. Anything different than 0 means we need to login
+  AZURE_LOGIN=$?
+
+  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
+      # not logged in. Initiate login process
+      az login
+      export AZURE_LOGIN
+
+  fi
+}
+
 # inherit_exit is available on bash >= 4 
 if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
 	shopt -s inherit_errexit
@@ -82,5 +120,7 @@ create_hub() {
 }
 
 check_dependencies
+check_for_azure_login
+check_for_cloud-shell
 show_params
 create_hub
