@@ -4,6 +4,44 @@
 # - jq
 #set -Eeu -o pipefail
 
+########################################################################################
+AZURE_LOGIN=0 
+########################################################################################
+trap exit SIGINT SIGTERM
+
+# checks if we are running in cloud-shell.
+# if yes, we need to login to Azure first. Otherwise some commands will fail.
+check_for_cloud-shell() {
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
+	echo
+        echo '****************************************************'
+        echo ' Please login to Azure before proceeding.'
+        echo '****************************************************'
+        echo ' In cloud-shell, you need to do az login as a workaround before' 
+        echo ' creating the service principal below.' 
+        echo
+        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
+        az login
+  fi
+  # we are logged in at this point
+  AZURE_LOGIN=1
+  export AZURE_LOGIN
+}
+
+check_for_azure_login() {
+  # run a command against Azure to check if we are logged in already.
+  az group list
+  # save the return code from above. Anything different than 0 means we need to login
+  AZURE_LOGIN=$?
+
+  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
+      # not logged in. Initiate login process
+      az login
+      export AZURE_LOGIN
+
+  fi
+}
+
 # inherit_exit is available on bash >= 4
 if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
         shopt -s inherit_errexit
@@ -40,7 +78,7 @@ check_for_cloud-shell() {
   # creating the service principal below. 
   #
   # Only run this code when the user invokes run.sh from this directory. 
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.*  && $AZURE_LOGIN == "false" ]]; then
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.*  && ! ! ${AZURE_LOGIN} ]]; then
   	echo '****************************************************'
         echo ' Please login to Azure before proceeding.'
   	echo '****************************************************'
@@ -98,7 +136,7 @@ create_branches() {
 create_branch() {
   # Execute commands on the remote jump box
   run_on_jumpbox () {
-    ssh -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
+    ssh -p 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
   }
   # Set the Subscriptoin
   az account set --subscription $SUBSCRIPTION_ID
@@ -149,8 +187,12 @@ create_branch() {
 
   # Copy the private key up to the jump server to be used to access the rest of the nodes
   echo "[branch: $BRANCH_NAME] - Copying private key to jump server ..." | tee /dev/tty
-  scp -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa || true
-
+  echo "[branch: $BRANCH_NAME] - Waiting for cloud-init to finish configuring the jumpbox ..." | tee /dev/tty
+  until scp -P 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
+  do
+    sleep 5
+  done
+  
   # Execute setup script on jump server
   # Get the host name for the control host
   CONTROL_HOST_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .controlName.value)
@@ -207,7 +249,7 @@ create_branch() {
   az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
   az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encoding base64 --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
   # copy pfx file to jump box and create secret there
-  scp -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
+  scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
   # Set k8s secret from jumpbox
   run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
@@ -274,7 +316,7 @@ create_branch() {
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
 [branch: $BRANCH_NAME] - Deployment Complete! 
-Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME
+Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
 Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
 ****************************************************
 EOM
@@ -282,9 +324,9 @@ EOM
   echo "$COMPLETE_MESSAGE" | tee /dev/tty
 }
 
-
 # Execute Functions
 check_dependencies
+check_for_azure_login
 check_for_cloud-shell
 show_params
 create_branches

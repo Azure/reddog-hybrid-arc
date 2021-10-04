@@ -21,6 +21,9 @@ runcmd:
   # curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
   # Install Azure CLI
   - curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  # change the default ssh port
+  - echo "Port 2022" >> /etc/ssh/sshd_config
+  - systemctl restart ssh
   # Create init done file
   - touch /tmp/cloud-init-done
 ''')
