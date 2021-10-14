@@ -59,7 +59,7 @@ check_for_cloud-shell() {
   # creating the service principal below. 
   #
   # Only run this code when the user invokes run.sh from this directory. 
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* && ${AZURE_LOGIN} -ne 0 ]]; then
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
   	echo '****************************************************'
         echo ' Please login to Azure before proceeding.'
   	echo '****************************************************'
