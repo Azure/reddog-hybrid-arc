@@ -3,30 +3,11 @@
 # - Azure CLI
 # - jq
 #set -Eeu -o pipefail
-
+set -x
 ########################################################################################
 AZURE_LOGIN=0 
 ########################################################################################
 trap exit SIGINT SIGTERM
-
-# checks if we are running in cloud-shell.
-# if yes, we need to login to Azure first. Otherwise some commands will fail.
-check_for_cloud-shell() {
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
-	echo
-        echo '****************************************************'
-        echo ' Please login to Azure before proceeding.'
-        echo '****************************************************'
-        echo ' In cloud-shell, you need to do az login as a workaround before' 
-        echo ' creating the service principal below.' 
-        echo
-        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
-        az login
-  fi
-  # we are logged in at this point
-  AZURE_LOGIN=1
-  export AZURE_LOGIN
-}
 
 check_for_azure_login() {
   # run a command against Azure to check if we are logged in already.
@@ -78,7 +59,7 @@ check_for_cloud-shell() {
   # creating the service principal below. 
   #
   # Only run this code when the user invokes run.sh from this directory. 
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.*  && ! ! ${AZURE_LOGIN} ]]; then
+  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
   	echo '****************************************************'
         echo ' Please login to Azure before proceeding.'
   	echo '****************************************************'

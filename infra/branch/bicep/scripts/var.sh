@@ -5,7 +5,7 @@
 check_global_variables() {
     local _global_vars
 	_global_vars=(
-    	ADMIN_USER_NAME AZURE_LOGIN BRANCHES CURRENT_USER_ID K3S_TOKEN 
+    	ADMIN_USER_NAME BRANCHES CURRENT_USER_ID K3S_TOKEN 
 	PREFIX RABBIT_MQ_PASSWD REDIS_PASSWD SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME 
 	SUBSCRIPTION_ID TENANT_ID
     )
@@ -18,9 +18,6 @@ check_global_variables() {
 	fi
     done
 }
-
-AZURE_LOGIN=false
-export AZURE_LOGIN
 
 # Set and export Variables
 CONFIG="$(cat config.json | jq -r .)"
