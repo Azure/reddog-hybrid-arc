@@ -5,8 +5,8 @@
 check_global_variables() {
     local _global_vars
 	_global_vars=(
-    	ADMIN_USER_NAME CURRENT_USER_ID HUB_NAME K3S_TOKEN PREFIX RABBIT_MQ_PASSWD  
-    	REDIS_PASSWD RG_LOCATION RG_NAME SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME SUBSCRIPTION_ID TENANT_ID
+    	ADMIN_USER_NAME CURRENT_USER_ID HUBNAME PREFIX RABBIT_MQ_PASSWD  
+    	RG_LOCATION RG_NAME SQL_ADMIN_PASSWD SQL_ADMIN_USER_NAME SUBSCRIPTION_ID TENANT_ID
     )
     
     for var in ${_global_vars[@]} 
@@ -33,6 +33,9 @@ export PREFIX
 
 ADMIN_USER_NAME="$(echo $CONFIG | jq -r '.admin_user_name')"
 export ADMIN_USER_NAME
+
+RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_mq_passwd')"
+export RABBIT_MQ_PASSWD
 
 SSH_KEY_PATH="./ssh_keys"
 SSH_KEY_NAME=$PREFIX"_id_rsa"

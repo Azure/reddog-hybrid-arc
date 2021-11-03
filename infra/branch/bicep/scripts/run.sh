@@ -3,7 +3,6 @@
 # - Azure CLI
 # - jq
 #set -Eeu -o pipefail
-set -x
 ########################################################################################
 AZURE_LOGIN=0 
 ########################################################################################
@@ -205,7 +204,7 @@ create_branch() {
   MI_SUFFIX="branchManagedIdentity"
   MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
   #MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
-  MI_OBJ_ID=$(az  identity show -n ${MI_BASENAME}${MI_SUFFIX} -g $RG_NAME | jq -r .principalId)
+  MI_OBJ_ID=$(az  identity show -n ${MI_BASENAME}${MI_SUFFIX} -g $RG_NAME -o json| jq -r .principalId)
   echo "User Assigned Managed Identity App ID: $MI_APP_ID"
   echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 

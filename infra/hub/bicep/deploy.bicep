@@ -150,3 +150,9 @@ module aks 'modules/aks.bicep' = {
 output keyvault object = {
   name: keyvault.outputs.name
 }
+
+output aks object = {
+  name: aks.outputs.name
+}
+
+

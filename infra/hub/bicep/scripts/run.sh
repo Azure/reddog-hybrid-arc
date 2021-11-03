@@ -4,6 +4,8 @@
 # - jq
 #set -Ee -o pipefail
 
+. ../../../common/utils.subr
+
 ########################################################################################
 AZURE_LOGIN=0 
 ########################################################################################
@@ -110,6 +112,10 @@ create_hub() {
   # Save deployment outputs
   mkdir -p outputs
   az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs | tee "./outputs/$RG_NAME-bicep-outputs.json"
+
+  #
+  # potentially move this to a jumpbox on Corp
+
 
   CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
   CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
