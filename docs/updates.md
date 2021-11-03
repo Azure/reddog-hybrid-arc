@@ -1,19 +1,5 @@
 ## Updates
 
-https://reddog-corp.azurewebsites.net
-http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081
-
-ssh reddogadmin@40.71.190.175 -i ./ssh_keys/br2_id_rsa
-
-accounting
-http://reddog-toronto-apim.azure-api.net/accounting
-
-make line
-http://reddog-toronto-apim.azure-api.net/makeline
-
-order
-http://reddog-toronto-apim.azure-api.net/order
-
 #### Corp 
 
 KV cert
@@ -154,8 +140,37 @@ http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081/#/dashboard
 
 ```bash
 
-export RG_NAME=br-reddog-casper-eastus
-az connectedk8s show --name $RG_NAME-branch --resource-group $RG_NAME -o json
+chmod 600 ./ssh_keys/brian_id_rsa
+ssh reddogadmin@13.82.97.86 -i ./ssh_keys/brian_id_rsa -p 2022
+
+Cluster connection info: http://40.71.45.45:8081 or http://brianatlanta-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081
+
+export RG_NAME=brian-reddog-atlanta-eastus
+export CLUSTER=brianatlanta-k3s
+
+az connectedk8s connect -g $RG_NAME -n $CLUSTER
+az connectedk8s delete -g $RG_NAME -n $CLUSTER
+
+# Arc join the cluster
+  # Get managed identity object id
+  MI_BASENAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value | sed 's/-kv.*//g')
+  MI_SUFFIX="branchManagedIdentity"
+  MI_APP_ID=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .userAssignedMIAppID.value)
+  #MI_OBJ_ID=$(az ad sp show --id $MI_APP_ID -o tsv --query objectId)
+  MI_OBJ_ID=$(az identity show -n ${MI_BASENAME}${MI_SUFFIX} -g $RG_NAME | jq -r .principalId)
+
+  az identity show -n brianatlantabranchManagedIdentity -g $RG_NAME
+  MI_OBJ_ID="f8dd54cf-8f7b-4e85-8025-7a1c6fbbec09"
+  
+  echo "User Assigned Managed Identity App ID: $MI_APP_ID"
+  echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
+
+  User Assigned Managed Identity App ID: 621e40f5-17dd-42a8-a308-7fbe48075fe4
+  User Assigned Managed Identity Object ID: f8dd54cf-8f7b-4e85-8025-7a1c6fbbec09
+
+az connectedk8s connect -g $RG_NAME -n $CLUSTER --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID
+
+az connectedk8s show --name $CLUSTER --resource-group $RG_NAME -o json
 
 # Lima
 https://docs.microsoft.com/en-us/azure/app-service/manage-create-arc-environment?tabs=bash
@@ -164,7 +179,7 @@ az k8s-extension create \
     --resource-group $RG_NAME \
     --name "appservice-ext" \
     --cluster-type connectedClusters \
-    --cluster-name $RG_NAME-branch \
+    --cluster-name $CLUSTER \
     --extension-type 'Microsoft.Web.Appservice' \
     --release-train stable \
     --auto-upgrade-minor-version true \
@@ -173,23 +188,76 @@ az k8s-extension create \
     --configuration-settings "Microsoft.CustomLocation.ServiceAccount=default" \
     --configuration-settings "appsNamespace=appservice-ns" \
     --configuration-settings "clusterName=reddog-kube-env" \
-    --configuration-settings "loadBalancerIp=52.149.145.107" \
+    --configuration-settings "loadBalancerIp=40.71.45.45" \
     --configuration-settings "keda.enabled=false" \
     --configuration-settings "buildService.storageClassName=local-path" \
     --configuration-settings "buildService.storageAccessMode=ReadWriteOnce" \
     --configuration-settings "customConfigMap=appservice-ns/kube-environment-config" 
 
+watch az k8s-extension show --cluster-type connectedClusters --cluster-name $CLUSTER --resource-group $RG_NAME --name appservice-ext -o table
+
 az k8s-extension show \
     --cluster-type connectedClusters \
-    --cluster-name $RG_NAME-branch \
+    --cluster-name $CLUSTER \
     --resource-group $RG_NAME \
     --name appservice-ext -o json
 
 az k8s-extension delete \
     --cluster-type connectedClusters \
-    --cluster-name $RG_NAME-branch \
+    --cluster-name $CLUSTER \
     --resource-group $RG_NAME \
     --name appservice-ext
+
+extensionId=$(az k8s-extension show \
+    --cluster-type connectedClusters \
+    --cluster-name $CLUSTER \
+    --resource-group $RG_NAME \
+    --name appservice-ext \
+    --query id \
+    --output tsv)    
+
+customLocationName="atlanta-custom-loc"
+
+connectedClusterId=$(az connectedk8s show --resource-group $RG_NAME --name $CLUSTER --query id --output tsv)    
+
+az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv
+
+az connectedk8s enable-features -n $CLUSTER -g $RG_NAME --custom-locations-oid "51dfe1e8-70c6-4de5-a08e-e18aff23d815" --features cluster-connect custom-locations
+
+az customlocation create \
+    --resource-group $RG_NAME \
+    --name $customLocationName \
+    --host-resource-id $connectedClusterId \
+    --namespace "appservice-ns" \
+    --cluster-extension-ids $extensionId
+
+az customlocation show --resource-group $RG_NAME --name $customLocationName
+
+customLocationId=$(az customlocation show \
+    --resource-group $RG_NAME \
+    --name $customLocationName \
+    --query id \
+    --output tsv)
+
+az extension add --yes --source "https://aka.ms/appsvc/appservice_kube-latest-py2.py3-none-any.whl"
+
+export KUBEENVNAME="reddog-kube-env"
+
+az appservice kube create \
+    --resource-group $RG_NAME \
+    --name $KUBEENVNAME \
+    --custom-location $customLocationId \
+    --static-ip "40.71.45.45"
+
+az appservice kube show --resource-group $RG_NAME --name $KUBEENVNAME
+
+az webapp create \
+    --resource-group $RG_NAME \
+    --name briar-test \
+    --custom-location $customLocationId \
+    --runtime 'NODE|12-lts'
+
+http://briar-test.reddog-kube-env-114mjqcn.eastus.k4apps.io    
 
 # APIM
 https://docs.microsoft.com/en-us/azure/api-management/how-to-deploy-self-hosted-gateway-azure-arc
