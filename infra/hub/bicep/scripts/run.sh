@@ -3,8 +3,10 @@
 # - Azure CLI
 # - jq
 #set -Ee -o pipefail
+BASEDIR=$(pwd | sed 's!infra/hub/bicep.*!!g')
 
-. ../../../common/utils.subr
+source $BASEDIR/infra/common/utils.subr
+source $BASEDIR/infra/common/corp.subr
 
 ########################################################################################
 AZURE_LOGIN=0 
@@ -38,7 +40,7 @@ check_for_azure_login() {
 
   if [[ ${AZURE_LOGIN} -ne 0 ]]; then
       # not logged in. Initiate login process
-      az login
+      az login --use-device-code
       export AZURE_LOGIN
 
   fi
@@ -113,15 +115,9 @@ create_hub() {
   mkdir -p outputs
   az deployment group show -g $RG_NAME -n $ARM_DEPLOYMENT_NAME -o json --query properties.outputs | tee "./outputs/$RG_NAME-bicep-outputs.json"
 
-  #
-  # potentially move this to a jumpbox on Corp
-
-
-  CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
-  CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
-
   echo '****************************************************'
-  echo "Hub deployed successfully"
+  echo "Hub deployed successfully."
+  echo "Next: Configuring the cluster."
   echo '****************************************************'
 }
 
@@ -129,4 +125,29 @@ check_dependencies
 check_for_azure_login
 check_for_cloud-shell
 show_params
+
+#
+# hub creation
 create_hub
+aks_get_credentials
+
+# SQL setup
+sql_allow_firewall
+
+# Key Vault setup and certs & secrets
+kv_init
+reddog_create_k8s_secrets
+
+# GitOps dependencies
+zipkin_init
+
+# GitOps app
+gitops_aks_connect_cluster
+gitops_configuration_create hub
+
+# UI
+appservice_plan_init
+webapp_init
+
+
+# APIM

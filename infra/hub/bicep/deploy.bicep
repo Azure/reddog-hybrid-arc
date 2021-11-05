@@ -147,12 +147,7 @@ module aks 'modules/aks.bicep' = {
 //   }
 //}
 
-output keyvault object = {
-  name: keyvault.outputs.name
-}
-
-output aks object = {
-  name: aks.outputs.name
-}
-
-
+// Outputs
+output keyvaultName string = keyvault.outputs.name
+output aksName string = aks.outputs.name
+output sqlServerName string = sqlServer.outputs.name

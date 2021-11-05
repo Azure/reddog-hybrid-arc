@@ -1,34 +1,42 @@
-kv_create() {
+#
+# Common utils used by both: branch and hub
+
+kv_init() {
     ## Create SP for Key Vault Access
     KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
     echo "Key Vault: $KV_NAME"
     echo "Create SP for KV use..."
-    az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
+    az ad sp create-for-rbac \
+        --name "http://sp-$RG_NAME.microsoft.com" \
+        --create-cert \
+        --cert $RG_NAME-cert \
+        --keyvault $KV_NAME \
+        --skip-assignment \
+        --years 1
+    
     ## Get SP APP ID
     echo "Getting SP_APPID ..."
     SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
     SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
     echo "AKV SP_APPID: $SP_APPID"
+    
     ## Get SP Object ID
     echo "Getting SP_OBJECTID ..."
     SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
     echo "AKV SP_OBJECTID: $SP_OBJECTID"
+    
     # Assign SP to KV with GET permissions
-    az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
-    az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encoding base64 --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
-}
+    az keyvault set-policy \
+        --name $KV_NAME \
+        --object-id $SP_OBJECTID \
+        --secret-permissions get  \
+        --certificate-permissions get
 
-create_redddog() {
-    kubectl create ns reddog-retail
-    kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID
-    kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-br2-reddog-corp-eastus-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID
-}
-
-# Zipkin
-create_zipkin() {
-    kubectl create ns zipkin
-    kubectl create deployment zipkin -n zipkin --image openzipkin/zipkin
-    kubectl expose deployment zipkin -n zipkin --type LoadBalancer --port 9411
+    az keyvault secret download \
+        --vault-name $KV_NAME \
+        --name $RG_NAME-cert \
+        --encoding base64 \
+        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
 }
 
 kv_add_secrets() {
@@ -38,32 +46,28 @@ kv_add_secrets() {
     #sb-root-connectionstring
     #reddog-sql 
     echo "adding Key Vault Secrets"
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name sb-root-connectionstring \
+        --value ABC123456
 }
 
-sql_allow_firewall(){
-    #sql server must set firewall to allow azure services
-    echo "allowing firewall"
-}
-
-aks_connect_cluster(){
-    export AKSNAME=br2-hub-aks
-    az connectedk8s connect -g $RG_NAME -n $AKSNAME --distribution aks
-}
-
-k8s_configuration_create() {
+gitops_configuration_create() {
     local _target
     local _manifest_path
 
+    _target=$1
+
     # checks if we are creating hubs or branches
-    if [[ ${_target}} == "hub" ]]; then
-        ${_manifest_path} = "corp"
-        ${AKSNAME} = 
+    if [[ ${_target} == "hub" ]]; then
+        _manifest_path="corp"
+        CLUSTER_NAME=$AKS_NAME
     else
-        ${_manifest_path} = "branch"
+        _manifest_path="branch"
     fi
 
     az k8s-configuration create --name $RG_NAME-hub-deps \
-        --cluster-name $AKSNAME \
+        --cluster-name $CLUSTER_NAME \
         --resource-group $RG_NAME \
         --scope cluster \
         --cluster-type connectedClusters \
@@ -76,7 +80,7 @@ k8s_configuration_create() {
         --ssh-private-key "$(cat arc-priv-key-b64)"
 
     az k8s-configuration create --name $RG_NAME-hub-base \
-        --cluster-name $AKSNAME \
+        --cluster-name $CLUSTER_NAME \
         --resource-group $RG_NAME \
         --scope namespace \
         --cluster-type connectedClusters \

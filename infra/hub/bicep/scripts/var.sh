@@ -18,7 +18,6 @@ check_global_variables() {
     done
 }
 
-
 # Set Variables
 CONFIG="$(cat config.json | jq -r .)"
 export CONFIG
@@ -51,6 +50,8 @@ export HUBNAME
 RG_LOCATION="$(echo $CONFIG | jq -r '.hub.location')"
 RG_NAME=$PREFIX-reddog-$HUBNAME-$RG_LOCATION
 export RG_LOCATION RG_NAME
+
+AKS_NAME="$(echo $CONFIG | jq -r '.hub.location')"
 
 # Get the current user Object ID                                                   
 if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then 

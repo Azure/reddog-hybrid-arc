@@ -3,6 +3,12 @@
 # - Azure CLI
 # - jq
 #set -Eeu -o pipefail
+
+BASEDIR=$(pwd | sed 's!infra/hub/bicep.*!!g')
+
+source $BASEDIR/infra/common/utils.subr
+source $BASEDIR/infra/common/branch.subr
+
 ########################################################################################
 AZURE_LOGIN=0 
 ########################################################################################
@@ -310,3 +316,8 @@ check_for_azure_login
 check_for_cloud-shell
 show_params
 create_branches
+
+# Corp Tx Service
+rabbitmq_create_bindings
+keda_init
+corp_transfer_fix_init

@@ -235,5 +235,3 @@ output keyvaultName string = keyvault.outputs.name
 output storageAccountName string = receiptstorage.name
 output clusterIP string = workers.outputs.publicIP
 output clusterFQDN string = workers.outputs.fqdn
-
-

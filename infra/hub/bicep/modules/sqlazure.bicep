@@ -22,3 +22,5 @@ resource sqlDB 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
     tier: 'Standard'
   }
 }
+
+output name string = azuresql.name
