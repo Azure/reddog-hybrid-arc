@@ -12,7 +12,10 @@ corp_transfer_fix_init() {
 #### Corp Transfer Function
 rabbitmq_create_bindings(){
     # Manually create 2 queues/bindings in Rabbit MQ
-    #corp-transfer-orders
-    #corp-transfer-ordercompleted
-    echo "rabbit"
+    run_on_jumpbox 'rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; 
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders";
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
 }

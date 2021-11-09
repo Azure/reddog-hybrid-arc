@@ -32,11 +32,20 @@ kv_init() {
         --secret-permissions get  \
         --certificate-permissions get
 
+    # Assign permissions to the current user
+    local UPN=$(az ad  signed-in-user show  -o json | jq -r '.userPrincipalName')
+
+    az keyvault set-policy \
+        --name $KV_NAME \
+        --secret-permissions get list set \
+        --certificate-permissions create get list \
+        --upn $UPN
+
     az keyvault secret download \
         --vault-name $KV_NAME \
         --name $RG_NAME-cert \
         --encoding base64 \
-        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
+        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx  
 }
 
 kv_add_secrets() {
@@ -49,6 +58,26 @@ kv_add_secrets() {
     az keyvault secret set \
         --vault-name $KV_NAME \
         --name sb-root-connectionstring \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name sblob-storage-key \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name cosmos-primary-rw-key \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name cosmos-uri \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name reddog-sql \
         --value ABC123456
 }
 

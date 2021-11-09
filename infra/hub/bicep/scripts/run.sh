@@ -3,7 +3,8 @@
 # - Azure CLI
 # - jq
 #set -Ee -o pipefail
-BASEDIR=$(pwd | sed 's!infra/hub/bicep.*!!g')
+BASEDIR=$(pwd | sed 's!infra.*!!g')
+
 
 source $BASEDIR/infra/common/utils.subr
 source $BASEDIR/infra/common/corp.subr
@@ -148,6 +149,5 @@ gitops_configuration_create hub
 # UI
 appservice_plan_init
 webapp_init
-
 
 # APIM

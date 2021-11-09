@@ -1,7 +1,7 @@
 param prefix string
 param accessPolicies array = []
 var uniqueId  = take(uniqueString(resourceGroup().id), 4) 
-var keyvaultname = '${prefix}-hub-kv-${uniqueId}'
+var keyvaultname = '${prefix}-kv-${uniqueId}'
 
 resource keyvault 'Microsoft.KeyVault/vaults@2020-04-01-preview' = {
   name: keyvaultname

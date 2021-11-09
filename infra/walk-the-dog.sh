@@ -62,8 +62,8 @@ if [[ ${AZURE_LOGIN} -eq 1 ]]; then
     BICEP_FILE="$HUB_PATH/deploy.bicep"
     export HUB_PATH BICEP_FILE
 
-    bash "$HUB_PATH/scripts/run.sh"
-
+    bash "$HUB_PATH/scripts/run.sh" 
+  
     ## Branch
     BRANCH_PATH="branch/bicep"
     BICEP_FILE="$BRANCH_PATH/deploy.bicep"

@@ -4,7 +4,7 @@
 # - jq
 #set -Eeu -o pipefail
 
-BASEDIR=$(pwd | sed 's!infra/hub/bicep.*!!g')
+BASEDIR=$(pwd | sed 's!infra.*!!g')
 
 source $BASEDIR/infra/common/utils.subr
 source $BASEDIR/infra/common/branch.subr
@@ -298,6 +298,7 @@ create_branch() {
   # install some tools on the jumpbox
   run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
   run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
+  run_on_jumpbox "sudo apt install rabbitmq-server"
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
