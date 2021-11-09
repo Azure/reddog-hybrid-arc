@@ -1,0 +1,25 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: reddog.state.loyalty
+  namespace: reddog-retail
+spec:
+  type: state.azure.cosmosdb
+  version: v1
+  metadata:
+    - name: url
+      secretKeyRef:
+        name: cosmos-uri
+        key: cosmos-uri
+    - name: database
+      value: reddog
+    - name: collection
+      value: loyalty
+    - name: masterKey
+      secretKeyRef:
+        name: cosmos-primary-rw-key
+        key: cosmos-primary-rw-key
+scopes:
+  - loyalty-service
+auth:
+  secretStore: reddog.secretstore

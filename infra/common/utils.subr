@@ -1,0 +1,121 @@
+#
+# Common utils used by both: branch and hub
+
+kv_init() {
+    ## Create SP for Key Vault Access
+    KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
+    echo "Key Vault: $KV_NAME"
+    echo "Create SP for KV use..."
+    az ad sp create-for-rbac \
+        --name "http://sp-$RG_NAME.microsoft.com" \
+        --create-cert \
+        --cert $RG_NAME-cert \
+        --keyvault $KV_NAME \
+        --skip-assignment \
+        --years 1
+    
+    ## Get SP APP ID
+    echo "Getting SP_APPID ..."
+    SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
+    SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+    echo "AKV SP_APPID: $SP_APPID"
+    
+    ## Get SP Object ID
+    echo "Getting SP_OBJECTID ..."
+    SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+    echo "AKV SP_OBJECTID: $SP_OBJECTID"
+    
+    # Assign SP to KV with GET permissions
+    az keyvault set-policy \
+        --name $KV_NAME \
+        --object-id $SP_OBJECTID \
+        --secret-permissions get  \
+        --certificate-permissions get
+
+    # Assign permissions to the current user
+    local UPN=$(az ad  signed-in-user show  -o json | jq -r '.userPrincipalName')
+
+    az keyvault set-policy \
+        --name $KV_NAME \
+        --secret-permissions get list set \
+        --certificate-permissions create get list \
+        --upn $UPN
+
+    az keyvault secret download \
+        --vault-name $KV_NAME \
+        --name $RG_NAME-cert \
+        --encoding base64 \
+        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx  
+}
+
+kv_add_secrets() {
+    #blob-storage-key
+    #cosmos-primary-rw-key
+    #cosmos-uri
+    #sb-root-connectionstring
+    #reddog-sql 
+    echo "adding Key Vault Secrets"
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name sb-root-connectionstring \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name sblob-storage-key \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name cosmos-primary-rw-key \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name cosmos-uri \
+        --value ABC123456
+    
+    az keyvault secret set \
+        --vault-name $KV_NAME \
+        --name reddog-sql \
+        --value ABC123456
+}
+
+gitops_configuration_create() {
+    local _target
+    local _manifest_path
+
+    _target=$1
+
+    # checks if we are creating hubs or branches
+    if [[ ${_target} == "hub" ]]; then
+        _manifest_path="corp"
+        CLUSTER_NAME=$AKS_NAME
+    else
+        _manifest_path="branch"
+    fi
+
+    az k8s-configuration create --name $RG_NAME-hub-deps \
+        --cluster-name $CLUSTER_NAME \
+        --resource-group $RG_NAME \
+        --scope cluster \
+        --cluster-type connectedClusters \
+        --operator-instance-name flux \
+        --operator-namespace flux \
+        --operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=main --manifest-generation=true" \
+        --enable-helm-operator \
+        --helm-operator-params='--set helm.versions=v3' \
+        --repository-url git@github.com:Azure/reddog-retail-demo.git \
+        --ssh-private-key "$(cat arc-priv-key-b64)"
+
+    az k8s-configuration create --name $RG_NAME-hub-base \
+        --cluster-name $CLUSTER_NAME \
+        --resource-group $RG_NAME \
+        --scope namespace \
+        --cluster-type connectedClusters \
+        --operator-instance-name base \
+        --operator-namespace reddog-retail \
+        --operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=main --manifest-generation=true" \
+        --repository-url git@github.com:Azure/reddog-retail-demo.git \
+        --ssh-private-key "$(cat arc-priv-key-b64)"
+}

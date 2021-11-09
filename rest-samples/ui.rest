@@ -1,0 +1,61 @@
+@ui-dapr = 127.0.0.1:5980
+@store-id = Redmond
+@order-service-name = order-service
+
+POST http://{{ui-dapr}}/v1.0/invoke/{{order-service-name}}/method/order
+Content-Type: application/json
+ 
+{
+    "storeId": "{{store-id}}",
+    "firstName": "John 'Hannibal'",
+    "lastName": "Smith",
+    "loyaltyId": "42",
+    "orderItems": [
+        {
+            "productId": 1,
+            "quantity": 1
+        },
+        {
+            "productId": 2,
+            "quantity": 1
+        },
+        {
+            "productId": 3,
+            "quantity": 3
+        }
+    ]
+}
+
+
+###
+GET http://{{ui-dapr}}/v1.0/invoke/accounting-service/method/OrderMetrics
+Content-Type: application/json
+
+###
+
+GET http://0.0.0.0:5980/v1.0/invoke/make-line-service/method/orders/Redmond
+Content-Type: application/json
+
+
+
+###
+
+GET http://localhost:5680/v1.0/healthz
+Content-Type: application/json
+
+###
+# order-service
+GET http://localhost:5180/v1.0/healthz
+
+###
+# makeline-service
+GET http://0.0.0.0:5280/v1.0/healthz
+
+###
+# receipt-gen-service
+GET http://0.0.0.0:5380/v1.0/healthz
+
+
+###
+# fake users
+GET https://randomuser.me/api/?inc=name&nat=au,ca,us,de,nz,gb&results=5

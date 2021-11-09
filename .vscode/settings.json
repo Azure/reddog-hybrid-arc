@@ -1,0 +1,9 @@
+{
+    "azureFunctions.deploySubpath": "infra/functions-csharp/bin/Release/net5.0/publish",
+    "azureFunctions.projectLanguage": "C#",
+    "azureFunctions.projectRuntime": "~3",
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.preDeployTask": "publish",
+    "azureFunctions.projectSubpath": "infra/functions-csharp",
+    "azureFunctions.templateFilter": "All"
+}

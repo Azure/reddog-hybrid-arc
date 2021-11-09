@@ -1,0 +1,71 @@
+#
+# Corp specifics
+
+keda_init() {
+    # KEDA
+    helm repo add kedacore https://kedacore.github.io/charts
+    helm repo update
+    helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda
+}
+
+# Azure SQL server must set firewall to allow azure services
+sql_allow_firewall() {
+    AZURE_SQL_SERVER=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .sqlServerName.value)
+    echo "Allow access to Azure Services to Azure SQL"
+    az sql server firewall-rule create \
+        --resource-group $RG_NAME \
+        --server $AZURE_SQL_SERVER \
+        --name AllowAzureServices \
+        --start-ip-address 0.0.0.0 \
+        --end-ip-address 0.0.0.0
+}
+
+aks_get_credentials() {
+    AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
+    az aks get-credentials \
+        -n $AKS_NAME \
+        -g $RG_NAME
+}
+
+# GitOps
+gitops_aks_connect_cluster() {
+    AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
+    az connectedk8s connect -g $RG_NAME -n $AKS_NAME --distribution aks
+}
+
+reddog_create_k8s_secrets() {
+    # Deploy initial cluster resources
+    kubectl create ns reddog-retail
+    kubectl create secret generic \
+        -n reddog-retail reddog.secretstore \
+        --from-file=secretstore-cert=./ssh_keys/kv-$RG_NAME-cert.pfx \
+        --from-literal=vaultName=$KV_NAME \
+        --from-literal=spnClientId=$SP_APPID \
+        --from-literal=spnTenantId=$TENANT_ID
+}
+
+# Zipkin
+zipkin_init() {
+    kubectl create ns zipkin
+    kubectl create deployment zipkin -n zipkin --image openzipkin/zipkin
+    kubectl expose deployment zipkin -n zipkin --type LoadBalancer --port 9411
+}
+
+# UI - App Service and Web App
+appservice_plan_init() {
+    az appservice plan create \
+        --is-linux \
+        -n ReddogAppServicePlan \
+        -g $RG_NAME \
+        --sku S1 \
+        --number-of-workers 1 \
+        -l $RG_LOCATION
+}
+
+webapp_init() {
+    az webapp create \
+        -n UI  \
+        -g $RG_NAME \
+        -p ReddogAppServicePlan \
+        -i nginx
+}

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-worker
+  namespace: reddog-retail
+  labels:
+    app: virtual-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: virtual-worker
+  template:
+    metadata:
+      labels:
+        app: virtual-worker
+      annotations:
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: virtual-worker
+        dapr.io/app-port: '80'
+        dapr.io/config: reddog.config
+    spec:
+      containers:
+        - name: virtual-worker
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-worker:22e53c9
+          imagePullPolicy: Always
+          startupProbe:
+            httpGet:
+              path: /probes/healthz
+              port: 80
+            failureThreshold: 6
+            periodSeconds: 10
+          env:
+            - name: STORE_ID
+              valueFrom:
+                secretKeyRef:
+                    name: branch.config
+                    key: store_id
+            - name: MIN_SECONDS_TO_COMPLETE_ITEM
+              value: '2'
+            - name: MAX_SECONDS_TO_COMPLETE_ITEM
+              value: '12'

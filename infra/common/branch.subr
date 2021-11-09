@@ -1,0 +1,21 @@
+
+# Corp Transfer
+corp_transfer_fix_init() {
+    # generates the corp-transfer-fx
+    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
+
+    # Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
+    kubectl apply -f $BASEDIR/manifests/corp-transfer-secret.yaml -n reddog-retail
+    kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
+}
+
+#### Corp Transfer Function
+rabbitmq_create_bindings(){
+    # Manually create 2 queues/bindings in Rabbit MQ
+    run_on_jumpbox 'rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; 
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders";
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true;
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
+}
