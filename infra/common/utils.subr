@@ -204,7 +204,7 @@ gitops_configuration_create() {
         sleep 5
     done
     
-    echo "az k8s-configuration create --name $RG_NAME-${_target}-base \
+    az k8s-configuration create --name $RG_NAME-${_target}-base \
         --cluster-name $CLUSTER_NAME \
         --resource-group $RG_NAME \
         --scope namespace \
@@ -212,5 +212,5 @@ gitops_configuration_create() {
         --operator-instance-name base \
         --operator-namespace reddog-retail \
         --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=main --manifest-generation=true" \
-        --repository-url https://github.com/Azure/reddog-hybrid-arc.git"
+        --repository-url https://github.com/Azure/reddog-hybrid-arc.git
 }
