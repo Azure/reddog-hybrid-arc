@@ -14,68 +14,6 @@ AZURE_LOGIN=0
 ########################################################################################
 trap exit SIGINT SIGTERM
 
-check_for_azure_login() {
-  # run a command against Azure to check if we are logged in already.
-  az group list
-  # save the return code from above. Anything different than 0 means we need to login
-  AZURE_LOGIN=$?
-
-  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
-      # not logged in. Initiate login process
-      az login
-      export AZURE_LOGIN
-
-  fi
-}
-
-# inherit_exit is available on bash >= 4
-if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
-        shopt -s inherit_errexit
-fi
-trap "echo ERROR: Please check the error messages above." ERR
-
-check_dependencies() {
-  local _DEP_FLAG _NEEDED
-
-  # check if the dependencies are installed
-  _NEEDED="az jq"
-  _DEP_FLAG=false
-
-  echo -e "Checking dependencies for the creation of the branches ...\n"
-  for i in seq ${_NEEDED}
-    do
-      if hash "$i" 2>/dev/null; then
-      # do nothing
-        :
-      else
-        echo -e "\t $_ not installed".
-        _DEP_FLAG=true
-      fi
-    done
-
-  if [[ "${_DEP_FLAG}" == "true" ]]; then
-    echo -e "\nDependencies missing. Please fix that before proceeding"
-    exit 1
-  fi
-}
-
-check_for_cloud-shell() {
-  # in cloud-shell, you need to do az login as a workaround before 
-  # creating the service principal below. 
-  #
-  # Only run this code when the user invokes run.sh from this directory. 
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
-  	echo '****************************************************'
-        echo ' Please login to Azure before proceeding.'
-  	echo '****************************************************'
-        echo ' In cloud-shell, you need to do az login as a workaround before' 
-        echo ' creating the service principal below.' 
-        echo
-        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
-        az login
-  fi
-}
-
 # Show Params
 show_params() {
   # Set Variables from var.sh
@@ -251,8 +189,7 @@ create_branch() {
     --operator-params="--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true" \
     --enable-helm-operator \
     --helm-operator-params='--set helm.versions=v3' \
-    --repository-url git@github.com:Azure/reddog-retail-demo.git \
-    --ssh-private-key "$(cat arc-priv-key-b64)"
+    --repository-url git@github.com:Azure/reddog-hybrid-arc.git 
 
   # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
   run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
@@ -292,8 +229,7 @@ create_branch() {
     --operator-params="--git-readonly --git-path=manifests/branch/base --git-branch=main --manifest-generation=true" \
     --enable-helm-operator \
     --helm-operator-params='--set helm.versions=v3' \
-    --repository-url git@github.com:Azure/reddog-retail-demo.git \
-    --ssh-private-key "$(cat arc-priv-key-b64)"
+    --repository-url git@github.com:Azure/reddog-hybrid-arc.git
   
   # install some tools on the jumpbox
   run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"

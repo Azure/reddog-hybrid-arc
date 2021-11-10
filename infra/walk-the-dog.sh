@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# set -eo pipefail
+set -eo pipefail
 
 ########################################################################################
 AZURE_LOGIN=0

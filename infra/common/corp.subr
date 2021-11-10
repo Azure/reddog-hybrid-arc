@@ -64,8 +64,8 @@ appservice_plan_init() {
 
 webapp_init() {
     az webapp create \
-        -n UI  \
+        -n $RG_NAME-ui \
         -g $RG_NAME \
         -p ReddogAppServicePlan \
-        -i nginx
+        -i ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:latest
 }

@@ -25,3 +25,4 @@ resource orders 'Microsoft.ServiceBus/namespaces/topics@2018-01-01-preview' = {
   }
 }
 
+output name string = servicebus.name

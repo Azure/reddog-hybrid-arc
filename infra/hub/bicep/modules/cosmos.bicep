@@ -50,3 +50,5 @@ resource cosmosContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
     }
   }
 }  
+
+output name string = cosmos.name
