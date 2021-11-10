@@ -2,7 +2,7 @@ param name string = 'reddogcorp'
 param location string = resourceGroup().location
 param sku string = 'S1'
 param tier string = 'Standard'
-param siteContainerImage string = 'chzbrgr71/reddog-ui:e11c58e'
+param siteContainerImage string = 'ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:latest'
 param makeLineBaseUrl string = 'http://makeline.corp.reddog.io'
 param accountingBaseUrl string = 'http://accounting.corp.reddog.io'
 
@@ -14,6 +14,7 @@ var webSiteName = 'ui-${uniquePrefix}'
 resource site 'microsoft.web/sites@2020-06-01' = {
   name: webSiteName
   location: location
+  kind: 'app,linux,container'
   properties: {
     siteConfig: {
       appSettings: [
