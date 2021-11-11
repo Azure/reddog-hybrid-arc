@@ -1,30 +1,31 @@
-## Red Dog Retail Demo - Azure Application Innovation Scenario
+## Red Dog Demo - Hybrid Arc Deployment (Retail)
 
 ### Background
 
-This demo/workshop is being created to help show the value of the Azure App Innovation and hybrid cloud story. This includes Azure Arc for Kubernetes, Arc Enabled Services, Azure Kubernetes Service, Dapr, and the overall value of the Azure PaaS story. The application is designed with a polyglot microservices and event driven architecture. 
+This is the hybrid cloud deployment of the [Red Dog Demo](https://github.com/Azure/reddog-code). This is an example deployment showcasing the following technologies:
+
+* Azure Arc
+* Arc Enabled Application Services
+* Arc Enabled Data Services
+* Dapr
+* AKS
+* Azure PaaS platform
 
 The business scenario is a Retail operation with applications that run in a branch office as well as Corporate. These branch stores can run in Azure or in a hybrid scenario with local compute with a connection to the cloud. If there is a loss of network connectivity, they still need to be able to process orders locally in each store. 
 
-### Architecture Diagrams
+### Architecture
 
-Application Architecture
+Architecture Diagram
 
-![Application architecture diagram](assets/architecture.png)
+![Architecture diagram](assets/architecture.png)
 
-### Contents
+### Getting Started
 
-This repo contains the scripts, manifests, docs, etc. needed to deploy and run the demo/workshop. There is a separate repo where the application source code is maintained. 
+This repo contains the scripts and configurations to deploy the [Red Dog Demo](https://github.com/Azure/reddog-code) to an example Hybrid Cloud environment. You will use a GitHub Codespaces environment to run the automated deployment script. 
 
-### Folder structure
-| Folder      | Description                                                                                |
-|------------------|-------------------------------------------------------------------------------------------------------------|
-| /assets | Items relating to this readme, i.e. images, diagrams. |
-| /infra   | Contains yaml and associated files for the infrastructure deployment of the resources needed to bootstrap the workshop. |
-| /manifests | Manifests and charts for Arc managed configs. |
-| /rest-sample | Rest services used. |
+Get started in your own Azure sub [here.](docs/quickstart.md)
 
-## Contributing
+### Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
@@ -37,18 +38,3 @@ provided by the bot. You will only need to do this once across all repos using o
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
-
-
-## Lets Begin!
-
-Once you are ready, please begin by going to [Quickstart](./quickstart.md) and following the instructions there.
-
-
