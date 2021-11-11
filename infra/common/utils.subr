@@ -203,13 +203,23 @@ gitops_configuration_create() {
         echo "."
         sleep 5
     done
+}
 
-    SECONDS="90"
-    # Wait 2 minutes for deps to deploy
-    Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs" | tee /dev/tty
-    sleep $SECONDS
+dapr_init() { 
+    local _target
+    local _manifest_path
 
-    
+    _target=$1
+
+    # checks if we are creating hubs or branches
+    if [[ ${_target} == "hub" ]]; then
+        _manifest_path="corporate"
+        CLUSTER_NAME=$AKS_NAME
+    else
+        _manifest_path="branch"
+        CLUSTER_NAME=$RG_NAME-branch
+    fi
+
     az k8s-configuration create --name $RG_NAME-${_target}-base \
         --cluster-name $CLUSTER_NAME \
         --resource-group $RG_NAME \

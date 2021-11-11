@@ -218,7 +218,11 @@ create_branch() {
   gitops_configuration_create
   
   # Initialize SQL in the cluster
-  #sql_init
+  sql_init
+
+  # Initialize Dapr in the cluster
+  echo "[branch: $BRANCH_NAME] - Deploing Dapr and the reddog app configs ..." | tee /dev/tty
+  dapr_init
 
   # install some tools on the jumpbox
   run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
