@@ -211,6 +211,12 @@ create_branch() {
   # copy pfx file to jump box and create secret there
   scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
   
+  # Get SP APP ID
+  echo "Getting SP_APPID ..."
+  SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
+  SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+  echo "AKV SP_APPID: $SP_APPID"
+
   # Set k8s secret from jumpbox
   run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
@@ -248,7 +254,7 @@ show_params
 create_branches
 
 # Corp Tx Service
-# rabbitmq_create_bindings | run_on_jumpbox
-# keda_init | run_on_jumpbox
-# corp_transfer_fix_init
-# corp_transfer_fix_apply | run_on_jumpbox
+rabbitmq_create_bindings | run_on_jumpbox
+keda_init | run_on_jumpbox
+corp_transfer_fix_init
+corp_transfer_fix_apply | run_on_jumpbox

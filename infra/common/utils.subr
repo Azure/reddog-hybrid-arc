@@ -85,12 +85,6 @@ kv_init() {
         --skip-assignment \
         --years 1
     
-    ## Get SP APP ID
-    echo "Getting SP_APPID ..."
-    SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
-    SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
-    echo "AKV SP_APPID: $SP_APPID"
-    
     ## Get SP Object ID
     echo "Getting SP_OBJECTID ..."
     SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
