@@ -166,6 +166,9 @@ create_branch() {
   sleep 20
 
   ssh_copy_key_to_jumpbox
+
+  run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
+  echo "[branch: $BRANCH_NAME] - Jump Server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022" | tee /dev/tty
   
   # Execute setup script on jump server
   # Get the host name for the control host
@@ -221,24 +224,31 @@ create_branch() {
   run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
   # Initial GitOps configuration
-  gitops_configuration_create
+  #gitops_configuration_create
+  gitops_dependency_create
   
   # Initialize SQL in the cluster
   sql_init
 
   # Initialize Dapr in the cluster
   echo "[branch: $BRANCH_NAME] - Deploing Dapr and the reddog app configs ..." | tee /dev/tty
-  dapr_init
+  #dapr_init
+  gitops_reddog_create
+
+  # Configure RabbitMQ and install Corp Tx Function (need to finalize)
+  #rabbitmq_create_bindings | run_on_jumpbox
+  #keda_init | run_on_jumpbox > we don't need Keda, already installed
+  #corp_transfer_fix_init
+  #corp_transfer_fix_apply | run_on_jumpbox
 
   # install some tools on the jumpbox
-  run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
-  run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
-  run_on_jumpbox "sudo apt install -y rabbitmq-server"
+  # BR-removing k9s for now (for time sake)
+  #run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
 [branch: $BRANCH_NAME] - Deployment Complete! 
-Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
+Jump server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
 Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
 ****************************************************
 EOM
@@ -252,9 +262,3 @@ check_for_azure_login
 check_for_cloud-shell
 show_params
 create_branches
-
-# Corp Tx Service
-rabbitmq_create_bindings | run_on_jumpbox
-keda_init | run_on_jumpbox
-corp_transfer_fix_init
-corp_transfer_fix_apply | run_on_jumpbox

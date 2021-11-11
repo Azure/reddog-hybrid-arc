@@ -23,7 +23,7 @@ aks_get_credentials() {
 # GitOps
 gitops_aks_connect_cluster() {
     AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
-    az connectedk8s connect -g $RG_NAME -n $AKS_NAME --distribution aks
+    az connectedk8s connect -g $RG_NAME -n$AKS_NAME  --distribution aks
 }
 
 reddog_create_k8s_secrets() {

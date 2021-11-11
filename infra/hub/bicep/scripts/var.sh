@@ -84,8 +84,11 @@ else
 		load_ssh_keys
 	else
 		echo "$SSH_KEY_PATH/$SSH_KEY_NAME does not exist...Generating SSH Key"
-		echo "Creating ssh key directory..."
-		mkdir $SSH_KEY_PATH
+		if [ ! -d "$SSH_KEY_PATH" ]
+		then
+			echo "Creating ssh key directory..."
+			mkdir $SSH_KEY_PATH
+		fi
 		echo "Generating ssh key..."
 		ssh-keygen -f $SSH_KEY_PATH/$SSH_KEY_NAME -N ''
 		chmod 400 $SSH_KEY_PATH/$SSH_KEY_NAME

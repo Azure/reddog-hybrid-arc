@@ -84,6 +84,14 @@ kv_init() {
         --keyvault $KV_NAME \
         --skip-assignment \
         --years 1
+
+    ## Brian - added this need to test
+    
+    ## Get SP APP ID
+    echo "Getting SP_APPID ..."
+    SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
+    SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
+    echo "AKV SP_APPID: $SP_APPID"        
     
     ## Get SP Object ID
     echo "Getting SP_OBJECTID ..."
@@ -163,7 +171,8 @@ kv_add_secrets() {
         --value "$REDDOG_SQL_CONNECTION_STRING"
 }
 
-gitops_configuration_create() {
+gitops_dependency_create() {
+    
     local _target
     local _manifest_path
 
@@ -190,16 +199,19 @@ gitops_configuration_create() {
         --helm-operator-params='--set helm.versions=v3' \
         --repository-url https://github.com/Azure/reddog-hybrid-arc.git
     
-    # Checks if the cluster is ready to accept the Reddog Apps
-    local provisioningState="NotReady"
-    while [[ $provisioningState != "Succeeded" ]]; do
-        provisioningState=$(az connectedk8s show -n $CLUSTER_NAME -g $RG_NAME -o json | jq -r '.provisioningState')
-        echo "."
-        sleep 5
-    done
+    # Checks if dapr is running before proceeding
+    #local provisioningState="Pending"
+    #while [[ $provisioningState != "Running" ]]; do
+    #    #provisioningState=$(az connectedk8s show -n $CLUSTER_NAME -g $RG_NAME -o json | jq -r '.provisioningState')
+    #    provisioningState=$(run_on_jumpbox kubectl get pod -n dapr-system -l app=dapr-operator -o jsonpath='{.items[0].status.phase}')
+    #    echo "."
+    #    sleep 5
+    #done
+    
+    sleep 60
 }
 
-dapr_init() { 
+gitops_reddog_create() { 
     local _target
     local _manifest_path
 
@@ -223,4 +235,7 @@ dapr_init() {
         --operator-namespace reddog-retail \
         --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=main --manifest-generation=true" \
         --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+
+    # Should check to see if pods are running
+
 }

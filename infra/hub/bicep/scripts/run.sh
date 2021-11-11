@@ -62,7 +62,7 @@ create_hub() {
 
 check_dependencies
 check_for_azure_login
-check_for_cloud-shell
+#check_for_cloud-shell
 show_params
 
 #
@@ -83,9 +83,42 @@ zipkin_init
 # Add secrets to Key Vault
 kv_add_secrets
 
-# # GitOps app
+# Arc Enable AKS
 gitops_aks_connect_cluster
-gitops_configuration_create hub
+
+# GitOps config for Hub AKS
+AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
+
+az k8s-configuration create --name $RG_NAME-hub-deps \
+--cluster-name $AKS_NAME \
+--resource-group $RG_NAME \
+--scope cluster \
+--cluster-type connectedClusters \
+--operator-instance-name flux \
+--operator-namespace flux \
+--operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=main --manifest-generation=true" \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url https://github.com/Azure/reddog-hybrid-arc.git
+
+# wait for Dapr to start
+sleep 300
+provisioningState="Pending"
+while [[ $provisioningState != "Running" ]]; do
+  provisioningState=$(kubectl get pod -n dapr-system -l app=dapr-operator -o jsonpath='{.items[0].status.phase}')
+  echo "waiting for Dapr operator to start..."
+  sleep 5
+done
+
+az k8s-configuration create --name $RG_NAME-hub-base \
+--cluster-name $AKS_NAME \
+--resource-group $RG_NAME \
+--scope namespace \
+--cluster-type connectedClusters \
+--operator-instance-name base \
+--operator-namespace reddog-retail \
+--operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=main --manifest-generation=true" \
+--repository-url https://github.com/Azure/reddog-hybrid-arc.git
 
 # UI
 # appservice_plan_init
