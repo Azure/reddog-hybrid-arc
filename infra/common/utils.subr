@@ -203,6 +203,12 @@ gitops_configuration_create() {
         echo "."
         sleep 5
     done
+
+    SECONDS="90"
+    # Wait 2 minutes for deps to deploy
+    Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs" | tee /dev/tty
+    sleep $SECONDS
+
     
     az k8s-configuration create --name $RG_NAME-${_target}-base \
         --cluster-name $CLUSTER_NAME \
