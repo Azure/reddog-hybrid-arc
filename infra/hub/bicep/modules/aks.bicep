@@ -50,10 +50,6 @@ var defaultSystemNodePoolSettings = union(defaultNodePoolSettings, {
   // ]
 })
 
-var defaultUserNodePoolSettings = union(defaultNodePoolSettings, { 
-  mode: 'User'
-})
-
 resource aks 'Microsoft.ContainerService/managedClusters@2021-03-01' = {
   name: name 
   location: resourceGroup().location  

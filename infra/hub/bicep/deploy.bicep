@@ -114,7 +114,6 @@ module webapp 'modules/webapp.bicep' = {
   name: 'webapp'
   params: {
     sku: 'S1'
-    tier: 'Standard'
   }
 }
 
