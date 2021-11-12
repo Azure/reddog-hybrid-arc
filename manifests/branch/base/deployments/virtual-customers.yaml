@@ -21,14 +21,14 @@ spec:
     spec:
       containers:
         - name: virtual-customers
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-customers:8e0e389
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-customers:6c72a30
           imagePullPolicy: Always
           env:
             - name: STORE_ID
               valueFrom:
                 secretKeyRef:
-                    name: branch.config
-                    key: store_id
+                  name: branch.config
+                  key: store_id
             - name: MAX_ITEM_QUANTITY
               value: '9'
             - name: MIN_SEC_TO_PLACE_ORDER
