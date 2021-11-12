@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: virtual-worker
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-worker:22e53c9
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-worker:7ff348a
           imagePullPolicy: Always
           startupProbe:
             httpGet:
@@ -34,8 +34,8 @@ spec:
             - name: STORE_ID
               valueFrom:
                 secretKeyRef:
-                    name: branch.config
-                    key: store_id
+                  name: branch.config
+                  key: store_id
             - name: MIN_SECONDS_TO_COMPLETE_ITEM
               value: '2'
             - name: MAX_SECONDS_TO_COMPLETE_ITEM
