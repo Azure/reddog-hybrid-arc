@@ -18,6 +18,6 @@ spec:
     spec:
       containers:
         - name: bootstrapper
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-bootstrapper:fe4dc13
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-bootstrapper:c76c703
           imagePullPolicy: Always
       restartPolicy: OnFailure
