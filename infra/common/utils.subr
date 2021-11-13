@@ -3,7 +3,7 @@
 
 check_for_azure_login() {
     # run a command against Azure to check if we are logged in already.
-    az group list
+    az group list -o table
     # save the return code from above. Anything different than 0 means we need to login
     AZURE_LOGIN=$?
 
@@ -163,12 +163,18 @@ kv_add_secrets() {
     
     # Azure SQL
     AZURE_SQL_SERVER=$(jq -r .sqlServerName.value ./outputs/$RG_NAME-bicep-outputs.json)
-    REDDOG_SQL_CONNECTION_STRING=$(az sql db show-connection-string \
-        --client ado.net --server ${AZURE_SQL_SERVER})
+    #REDDOG_SQL_CONNECTION_STRING=$(az sql db show-connection-string --client ado.net --server ${AZURE_SQL_SERVER})
+    echo "SQL:${AZURE_SQL_SERVER}"
+    echo "USER:${SQL_ADMIN_USER_NAME}"
+    echo "PWD:${SQL_ADMIN_PASSWD}"
+
+    REDDOG_SQL_CONNECTION_STRING="Server=tcp:${AZURE_SQL_SERVER}.database.windows.net,1433;Database=reddog-corp;User ID=${SQL_ADMIN_USER_NAME};Password=${SQL_ADMIN_PASSWD};Encrypt=true;Connection Timeout=30;"
+    echo "CONNECT:${REDDOG_SQL_CONNECTION_STRING}"
+
     az keyvault secret set \
         --vault-name $KV_NAME \
         --name reddog-sql \
-        --value "$REDDOG_SQL_CONNECTION_STRING"
+        --value "${REDDOG_SQL_CONNECTION_STRING}"
 }
 
 gitops_dependency_create() {
