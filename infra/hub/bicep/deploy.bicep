@@ -114,7 +114,6 @@ module webapp 'modules/webapp.bicep' = {
   name: 'webapp'
   params: {
     sku: 'S1'
-    tier: 'Standard'
   }
 }
 
@@ -151,3 +150,6 @@ module aks 'modules/aks.bicep' = {
 output keyvaultName string = keyvault.outputs.name
 output aksName string = aks.outputs.name
 output sqlServerName string = sqlServer.outputs.name
+output cosmosDbName string = cosmos.outputs.name
+output serviceBusName string = servicebus.outputs.name
+output storageAccountName string = storageaccount.outputs.name

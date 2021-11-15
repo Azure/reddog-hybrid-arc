@@ -1,13 +1,6 @@
 #
 # Corp specifics
 
-keda_init() {
-    # KEDA
-    helm repo add kedacore https://kedacore.github.io/charts
-    helm repo update
-    helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda
-}
-
 # Azure SQL server must set firewall to allow azure services
 sql_allow_firewall() {
     AZURE_SQL_SERVER=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .sqlServerName.value)
@@ -30,7 +23,7 @@ aks_get_credentials() {
 # GitOps
 gitops_aks_connect_cluster() {
     AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
-    az connectedk8s connect -g $RG_NAME -n $AKS_NAME --distribution aks
+    az connectedk8s connect -g $RG_NAME -n$AKS_NAME  --distribution aks
 }
 
 reddog_create_k8s_secrets() {
@@ -64,8 +57,8 @@ appservice_plan_init() {
 
 webapp_init() {
     az webapp create \
-        -n UI  \
+        -n $RG_NAME-ui \
         -g $RG_NAME \
         -p ReddogAppServicePlan \
-        -i nginx
+        -i ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:latest
 }

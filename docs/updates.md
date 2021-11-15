@@ -12,9 +12,9 @@ Corp Tx Service
 APIM
 
 ```bash
-export RG_NAME=br2-reddog-corp-eastus
+export RG_NAME=intials-reddog-corp-eastus
 export OUTPUT="./outputs/br-reddog-corp-eastus-bicep-outputs.json"
-export TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+export TENANT_ID=""
 
 ## Create SP for Key Vault Access (something not working here with JQ)
 KV_NAME=$(cat $OUTPUT | jq -r .keyvault.value.name)
@@ -55,8 +55,6 @@ cosmos-uri
 sb-root-connectionstring
 reddog-sql 
 
-# SQL Server - must set firewall to allow Azure services
-
 # GitOps
 export AKSNAME=br2-hub-aks
 az connectedk8s connect -g $RG_NAME -n $AKSNAME --distribution aks
@@ -91,20 +89,16 @@ az k8s-configuration delete --cluster-name $AKSNAME --resource-group $RG_NAME --
 
 # UI
 Add env variables to Hub UI App Service
-NODE_ENV
+
+# For each, you'd have something like http://20.81.34.83:8083 Each one has a specific port
 VUE_APP_ACCOUNTING_BASE_URL
-http://corp.accounting.brianredmond.io
-http://20.81.34.83:8083
-VUE_APP_IS_CORP
 VUE_APP_MAKELINE_BASE_URL
 VUE_APP_ORDER_BASE_URL
-VUE_APP_SITE_TITLE
-VUE_APP_SITE_TYPE
-VUE_APP_STORE_ID
-
-App Service - Setup container based deploy of UI
-
-
+NODE_ENV=production
+VUE_APP_IS_CORP=true
+VUE_APP_SITE_TITLE=My Company Name # this one will show up on the UI title
+VUE_APP_SITE_TYPE=Pharmacy
+VUE_APP_STORE_ID=Corp # I don't think this one is used for Corp. Just for the branches
 ```
 
 #### Corp Transfer Function
@@ -131,8 +125,6 @@ docker push ghcr.io/cloudnativegbb/paas-vnext/corp-transfer-service:1.0
 kubectl apply -f ./manifests/corp-transfer-secret.yaml -n reddog-retail
 kubectl apply -f ./manifests/corp-transfer-fx.yaml -n reddog-retail
 
-http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081/#/dashboard
-
 ```
 
 
@@ -141,9 +133,6 @@ http://br2toronto-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081/#/dashboard
 ```bash
 
 chmod 600 ./ssh_keys/brian_id_rsa
-ssh reddogadmin@13.82.97.86 -i ./ssh_keys/brian_id_rsa -p 2022
-
-Cluster connection info: http://40.71.45.45:8081 or http://brianatlanta-k3s-worker-pub-ip.eastus.cloudapp.azure.com:8081
 
 export RG_NAME=brian-reddog-atlanta-eastus
 export CLUSTER=brianatlanta-k3s
@@ -160,13 +149,13 @@ az connectedk8s delete -g $RG_NAME -n $CLUSTER
   MI_OBJ_ID=$(az identity show -n ${MI_BASENAME}${MI_SUFFIX} -g $RG_NAME | jq -r .principalId)
 
   az identity show -n brianatlantabranchManagedIdentity -g $RG_NAME
-  MI_OBJ_ID="f8dd54cf-8f7b-4e85-8025-7a1c6fbbec09"
+  MI_OBJ_ID=""
   
   echo "User Assigned Managed Identity App ID: $MI_APP_ID"
   echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
-  User Assigned Managed Identity App ID: 621e40f5-17dd-42a8-a308-7fbe48075fe4
-  User Assigned Managed Identity Object ID: f8dd54cf-8f7b-4e85-8025-7a1c6fbbec09
+  User Assigned Managed Identity App ID: 
+  User Assigned Managed Identity Object ID: 
 
 az connectedk8s connect -g $RG_NAME -n $CLUSTER --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID
 
@@ -188,7 +177,7 @@ az k8s-extension create \
     --configuration-settings "Microsoft.CustomLocation.ServiceAccount=default" \
     --configuration-settings "appsNamespace=appservice-ns" \
     --configuration-settings "clusterName=reddog-kube-env" \
-    --configuration-settings "loadBalancerIp=40.71.45.45" \
+    --configuration-settings "loadBalancerIp=1.1.1.1" \
     --configuration-settings "keda.enabled=false" \
     --configuration-settings "buildService.storageClassName=local-path" \
     --configuration-settings "buildService.storageAccessMode=ReadWriteOnce" \
@@ -220,7 +209,7 @@ customLocationName="atlanta-custom-loc"
 
 connectedClusterId=$(az connectedk8s show --resource-group $RG_NAME --name $CLUSTER --query id --output tsv)    
 
-az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv
+az ad sp show --id '' --query objectId -o tsv
 
 az connectedk8s enable-features -n $CLUSTER -g $RG_NAME --custom-locations-oid "51dfe1e8-70c6-4de5-a08e-e18aff23d815" --features cluster-connect custom-locations
 
@@ -247,7 +236,7 @@ az appservice kube create \
     --resource-group $RG_NAME \
     --name $KUBEENVNAME \
     --custom-location $customLocationId \
-    --static-ip "40.71.45.45"
+    --static-ip ""
 
 az appservice kube show --resource-group $RG_NAME --name $KUBEENVNAME
 
@@ -277,36 +266,17 @@ az k8s-extension create \
 
 az k8s-extension show --cluster-type connectedClusters --cluster-name $RG_NAME-branch --resource-group $RG_NAME --name apim-arc
 
-accounting
-http://40.121.221.220:8083/OrderMetrics
-http://40.121.221.220:8083/swagger/v1/swagger.json
-
-http://reddog-toronto-apim.azure-api.net/accounting
-
-make line
-http://40.121.221.220:8082/orders/toronto
-http://40.121.221.220:8082/swagger/v1/swagger.json
-
-http://reddog-toronto-apim.azure-api.net/makeline
-
-order
-http://40.121.221.220:8084/product
-http://40.121.221.220:8084/swagger/v1/swagger.json
-
-http://reddog-toronto-apim.azure-api.net/order
-
-
 ```
 
 #### Cleanup stuff
 
 ```bash
-http://40.121.221.220:15672
+http://<IP Address>:15672
 
-sqlcmd -S 10.128.1.4 -U reddogadmin -P "nJ0fqrQx7T^NZFl4sFf*U"
+sqlcmd -S 10.128.1.4 -U reddogadmin -P ""
 
-export REDISIP="40.121.221.220"
-export REDISPWD="MyPassword123"
+export REDISIP=""
+export REDISPWD=""
 redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 keys "loyalty*" | xargs redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 DEL
 redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 keys "make*" | xargs redis-cli -h $REDISIP -a $REDISPWD --raw -n 0 DEL
 

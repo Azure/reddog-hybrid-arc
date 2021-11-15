@@ -2,9 +2,9 @@
 # Requirements:
 # - Azure CLI
 # - jq
-#set -Ee -o pipefail
-BASEDIR=$(pwd | sed 's!infra.*!!g')
+set -Ee -o pipefail
 
+BASEDIR=$(pwd | sed 's!infra.*!!g')
 
 source $BASEDIR/infra/common/utils.subr
 source $BASEDIR/infra/common/corp.subr
@@ -13,68 +13,6 @@ source $BASEDIR/infra/common/corp.subr
 AZURE_LOGIN=0 
 ########################################################################################
 trap exit SIGINT SIGTERM
-
-# checks if we are running in cloud-shell.
-# if yes, we need to login to Azure first. Otherwise some commands will fail.
-check_for_cloud-shell() {
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
-	echo
-        echo '****************************************************'
-        echo ' Please login to Azure before proceeding.'
-        echo '****************************************************'
-        echo ' In cloud-shell, you need to do az login as a workaround before' 
-        echo ' creating the service principal below.' 
-        echo
-        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
-        az login
-  fi
-  # we are logged in at this point
-  AZURE_LOGIN=1
-  export AZURE_LOGIN
-}
-
-check_for_azure_login() {
-  # run a command against Azure to check if we are logged in already.
-  az group list
-  # save the return code from above. Anything different than 0 means we need to login
-  AZURE_LOGIN=$?
-
-  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
-      # not logged in. Initiate login process
-      az login --use-device-code
-      export AZURE_LOGIN
-
-  fi
-}
-
-# inherit_exit is available on bash >= 4 
-if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
-	shopt -s inherit_errexit
-fi
-trap "echo ERROR: Please check the error messages above." ERR
-
-check_dependencies() {
-  # check if the dependencies are installed
-  _NEEDED="az jq"
-
-  printf "Checking dependencies on the Hub ... "
-  for i in seq ${_NEEDED}
-    do
-      if hash "$i" 2>/dev/null; then
-      # do nothing
-        :
-      else
-        echo -e "\t $_ not installed".
-        _DEP_FLAG=true
-      fi
-    done
-
-  if [[ "${_DEP_FLAG}" == "true" ]]; then
-    echo -e "\nDependencies missing. Please fix that before proceeding"
-    exit 1
-  fi
-  printf "done.\n"
-}
 
 # Show Params
 show_params() {
@@ -124,7 +62,7 @@ create_hub() {
 
 check_dependencies
 check_for_azure_login
-check_for_cloud-shell
+#check_for_cloud-shell
 show_params
 
 #
@@ -132,22 +70,58 @@ show_params
 create_hub
 aks_get_credentials
 
-# SQL setup
+# # SQL setup
 sql_allow_firewall
 
-# Key Vault setup and certs & secrets
+# # Key Vault setup and certs & secrets
 kv_init
 reddog_create_k8s_secrets
 
-# GitOps dependencies
+# # GitOps dependencies
 zipkin_init
 
-# GitOps app
+# Add secrets to Key Vault
+kv_add_secrets
+
+# Arc Enable AKS
 gitops_aks_connect_cluster
-gitops_configuration_create hub
+
+# GitOps config for Hub AKS
+AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
+
+az k8s-configuration create --name $RG_NAME-hub-deps \
+--cluster-name $AKS_NAME \
+--resource-group $RG_NAME \
+--scope cluster \
+--cluster-type connectedClusters \
+--operator-instance-name flux \
+--operator-namespace flux \
+--operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=main --manifest-generation=true" \
+--enable-helm-operator \
+--helm-operator-params='--set helm.versions=v3' \
+--repository-url https://github.com/Azure/reddog-hybrid-arc.git
+
+# wait for Dapr to start
+sleep 300
+provisioningState="Pending"
+while [[ $provisioningState != "Running" ]]; do
+  provisioningState=$(kubectl get pod -n dapr-system -l app=dapr-operator -o jsonpath='{.items[0].status.phase}')
+  echo "waiting for Dapr operator to start..."
+  sleep 5
+done
+
+az k8s-configuration create --name $RG_NAME-hub-base \
+--cluster-name $AKS_NAME \
+--resource-group $RG_NAME \
+--scope namespace \
+--cluster-type connectedClusters \
+--operator-instance-name base \
+--operator-namespace reddog-retail \
+--operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=main --manifest-generation=true" \
+--repository-url https://github.com/Azure/reddog-hybrid-arc.git
 
 # UI
-appservice_plan_init
-webapp_init
+# appservice_plan_init
+# webapp_init
 
 # APIM

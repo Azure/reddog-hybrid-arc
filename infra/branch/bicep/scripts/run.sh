@@ -14,68 +14,6 @@ AZURE_LOGIN=0
 ########################################################################################
 trap exit SIGINT SIGTERM
 
-check_for_azure_login() {
-  # run a command against Azure to check if we are logged in already.
-  az group list
-  # save the return code from above. Anything different than 0 means we need to login
-  AZURE_LOGIN=$?
-
-  if [[ ${AZURE_LOGIN} -ne 0 ]]; then
-      # not logged in. Initiate login process
-      az login
-      export AZURE_LOGIN
-
-  fi
-}
-
-# inherit_exit is available on bash >= 4
-if [[ "${BASH_VERSINFO:-0}" -ge 4 ]]; then
-        shopt -s inherit_errexit
-fi
-trap "echo ERROR: Please check the error messages above." ERR
-
-check_dependencies() {
-  local _DEP_FLAG _NEEDED
-
-  # check if the dependencies are installed
-  _NEEDED="az jq"
-  _DEP_FLAG=false
-
-  echo -e "Checking dependencies for the creation of the branches ...\n"
-  for i in seq ${_NEEDED}
-    do
-      if hash "$i" 2>/dev/null; then
-      # do nothing
-        :
-      else
-        echo -e "\t $_ not installed".
-        _DEP_FLAG=true
-      fi
-    done
-
-  if [[ "${_DEP_FLAG}" == "true" ]]; then
-    echo -e "\nDependencies missing. Please fix that before proceeding"
-    exit 1
-  fi
-}
-
-check_for_cloud-shell() {
-  # in cloud-shell, you need to do az login as a workaround before 
-  # creating the service principal below. 
-  #
-  # Only run this code when the user invokes run.sh from this directory. 
-  if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
-  	echo '****************************************************'
-        echo ' Please login to Azure before proceeding.'
-  	echo '****************************************************'
-        echo ' In cloud-shell, you need to do az login as a workaround before' 
-        echo ' creating the service principal below.' 
-        echo
-        echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
-        az login
-  fi
-}
-
 # Show Params
 show_params() {
   # Set Variables from var.sh
@@ -94,6 +32,69 @@ show_params() {
   echo "SSH_KEY_NAME: $SSH_KEY_PATH/$SSH_KEY_NAME"
   echo "SSH_PUB_KEY: $SSH_PUB_KEY"
   echo "------------------------------------------------"
+}
+
+# Initialize SQL in the branch cluster
+sql_init() {
+  # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
+  run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+
+  SECONDS="90"
+  # Wait 2 minutes for deps to deploy
+  echo "[branch: $BRANCH_NAME] - Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs" | tee /dev/tty
+  sleep $SECONDS 
+
+  echo "[branch: $BRANCH_NAME] - Setup SQL User: $SQL_ADMIN_USER_NAME and DB" | tee /dev/tty
+
+  echo "
+  create database reddog;
+  go
+  use reddog;
+  go
+  create user $SQL_ADMIN_USER_NAME for login $SQL_ADMIN_USER_NAME;
+  go
+  create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
+  go
+  grant create table to $SQL_ADMIN_USER_NAME;
+  grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
+  ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
+  go" | run_on_jumpbox "cat > temp.sql"
+  
+  run_on_jumpbox "
+    kubectl wait --for=condition=ready pod -l app=mssql  -n sql; \
+    /opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U SA -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
+
+  echo "[branch: $BRANCH_NAME] - Done SQL setup" | tee /dev/tty
+}
+
+#### Corp Transfer Function
+rabbitmq_create_bindings(){
+    # Manually create 2 queues/bindings in Rabbit MQ
+        run_on_jumpbox \
+        'kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=rabbitmq -n rabbitmq; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders"; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true; \
+        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
+}
+
+ssh_copy_key_to_jumpbox() {
+  # Get the jump server public IP
+  export JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+
+  # Copy the private key up to the jump server to be used to access the rest of the nodes
+  echo "[branch: $BRANCH_NAME] - Copying private key to jump server ..." | tee /dev/tty
+  echo "[branch: $BRANCH_NAME] - Waiting for cloud-init to finish configuring the jumpbox ..." | tee /dev/tty
+  
+  # try to copy the ssh key to the server. Check if the key is present in the jumpbox before that.
+  if ! run_on_jumpbox -- file /home/reddogadmin/.ssh/id_rsa; then
+    until scp -P 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
+    do
+      sleep 5
+    done
+  fi 
 }
 
 # Loop through $BRANCHES (from config.json) and create branches
@@ -120,10 +121,6 @@ create_branches() {
 
 # Create Branch
 create_branch() {
-  # Execute commands on the remote jump box
-  run_on_jumpbox () {
-    ssh -p 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
-  }
   # Set the Subscriptoin
   az account set --subscription $SUBSCRIPTION_ID
 
@@ -168,16 +165,10 @@ create_branch() {
   # Give the VM a few more seconds to become available
   sleep 20
 
-  # Get the jump server public IP
-  JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+  ssh_copy_key_to_jumpbox
 
-  # Copy the private key up to the jump server to be used to access the rest of the nodes
-  echo "[branch: $BRANCH_NAME] - Copying private key to jump server ..." | tee /dev/tty
-  echo "[branch: $BRANCH_NAME] - Waiting for cloud-init to finish configuring the jumpbox ..." | tee /dev/tty
-  until scp -P 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.ssh/id_rsa
-  do
-    sleep 5
-  done
+  run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
+  echo "[branch: $BRANCH_NAME] - Jump Server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022" | tee /dev/tty
   
   # Execute setup script on jump server
   # Get the host name for the control host
@@ -217,93 +208,47 @@ create_branch() {
   echo "[branch: $BRANCH_NAME] - Arc joining the branch cluster ..." | tee /dev/tty
   run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $RG_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
-  ## Create SP for Key Vault Access
-  KV_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .keyvaultName.value)
-  echo "Key Vault: $KV_NAME"
-  echo "Create SP for KV use..."
-  az ad sp create-for-rbac --name "http://sp-$RG_NAME.microsoft.com" --create-cert --cert $RG_NAME-cert --keyvault $KV_NAME --skip-assignment --years 1
-  ## Get SP APP ID
+  # Key Vault dependencies
+  kv_init
+
+  # copy pfx file to jump box and create secret there
+  scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
+  
+  # Get SP APP ID
   echo "Getting SP_APPID ..."
   SP_INFO=$(az ad sp list -o json --display-name "http://sp-$RG_NAME.microsoft.com")
   SP_APPID=$(echo $SP_INFO | jq -r .[].appId)
   echo "AKV SP_APPID: $SP_APPID"
-  ## Get SP Object ID
-  echo "Getting SP_OBJECTID ..."
-  SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
-  echo "AKV SP_OBJECTID: $SP_OBJECTID"
-  # Assign SP to KV with GET permissions
-  az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
-  az keyvault secret download --vault-name $KV_NAME --name $RG_NAME-cert --encoding base64 --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
-  # copy pfx file to jump box and create secret there
-  scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx $ADMIN_USER_NAME@$JUMP_IP:~/kv-$RG_NAME-cert.pfx
+
   # Set k8s secret from jumpbox
   run_on_jumpbox "kubectl create secret generic -n reddog-retail reddog.secretstore --from-file=secretstore-cert=kv-$RG_NAME-cert.pfx --from-literal=vaultName=$KV_NAME --from-literal=spnClientId=$SP_APPID --from-literal=spnTenantId=$TENANT_ID"
 
-  CURRENT_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-  az k8s-configuration create --name $RG_NAME-branch-deps \
-    --cluster-name $RG_NAME-branch \
-    --resource-group $RG_NAME \
-    --scope cluster \
-    --cluster-type connectedClusters \
-    --operator-instance-name flux \
-    --operator-namespace flux \
-    --operator-params="--git-readonly --git-path=manifests/branch/dependencies --git-branch=main --manifest-generation=true" \
-    --enable-helm-operator \
-    --helm-operator-params='--set helm.versions=v3' \
-    --repository-url git@github.com:Azure/reddog-retail-demo.git \
-    --ssh-private-key "$(cat arc-priv-key-b64)"
-
-  # Preconfig SQL DB - Suggest moving this somehow to the Bootstrapper app itself
-  run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
-
-  SECONDS="90"
-  # Wait 2 minutes for deps to deploy
-  echo "[branch: $BRANCH_NAME] - Waiting $SECONDS seconds for Dependencies to deploy before installing base reddog-retail configs" | tee /dev/tty
-  sleep $SECONDS 
-
-  echo "[branch: $BRANCH_NAME] - Setup SQL User: $SQL_ADMIN_USER_NAME and DB" | tee /dev/tty
-
-  echo "
-  create database reddog;
-  go
-  use reddog;
-  go
-  create user $SQL_ADMIN_USER_NAME for login $SQL_ADMIN_USER_NAME;
-  go
-  create login $SQL_ADMIN_USER_NAME with password = '$SQL_ADMIN_PASSWD';
-  go
-  grant create table to $SQL_ADMIN_USER_NAME;
-  grant control on schema::dbo to $SQL_ADMIN_USER_NAME;
-  ALTER SERVER ROLE sysadmin ADD MEMBER $SQL_ADMIN_USER_NAME;
-  go" | run_on_jumpbox "cat > temp.sql"
-
-  run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S 10.128.1.4 -U SA -P \"$SQL_ADMIN_PASSWD\" -i temp.sql"
-
-  echo "[branch: $BRANCH_NAME] - Done SQL setup" | tee /dev/tty
-
-  az k8s-configuration create --name $RG_NAME-branch-base \
-    --cluster-name $RG_NAME-branch \
-    --resource-group $RG_NAME \
-    --scope namespace \
-    --cluster-type connectedClusters \
-    --operator-instance-name base \
-    --operator-namespace reddog-retail \
-    --operator-params="--git-readonly --git-path=manifests/branch/base --git-branch=main --manifest-generation=true" \
-    --enable-helm-operator \
-    --helm-operator-params='--set helm.versions=v3' \
-    --repository-url git@github.com:Azure/reddog-retail-demo.git \
-    --ssh-private-key "$(cat arc-priv-key-b64)"
+  # Initial GitOps configuration
+  #gitops_configuration_create
+  gitops_dependency_create
   
+  # Initialize SQL in the cluster
+  sql_init
+
+  # Initialize Dapr in the cluster
+  echo "[branch: $BRANCH_NAME] - Deploing Dapr and the reddog app configs ..." | tee /dev/tty
+  #dapr_init
+  gitops_reddog_create
+
+  # Configure RabbitMQ and install Corp Tx Function (need to finalize)
+  #rabbitmq_create_bindings | run_on_jumpbox
+  #keda_init | run_on_jumpbox > we don't need Keda, already installed
+  #corp_transfer_fix_init
+  #corp_transfer_fix_apply | run_on_jumpbox
+
   # install some tools on the jumpbox
-  run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
-  run_on_jumpbox "echo alias k=kubectl >> ~/.bashrc"
-  run_on_jumpbox "sudo apt install rabbitmq-server"
+  # BR-removing k9s for now (for time sake)
+  #run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
 [branch: $BRANCH_NAME] - Deployment Complete! 
-Jump box connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
+Jump server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
 Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
 ****************************************************
 EOM
@@ -317,8 +262,3 @@ check_for_azure_login
 check_for_cloud-shell
 show_params
 create_branches
-
-# Corp Tx Service
-rabbitmq_create_bindings
-keda_init
-corp_transfer_fix_init

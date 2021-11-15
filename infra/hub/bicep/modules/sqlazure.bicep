@@ -2,7 +2,7 @@ param prefix string = 'reddog'
 param location string = resourceGroup().location
 param adminUsername string
 param adminPassword string
-param sqlDBName string = 'reddog-corp'
+param sqlDBName string = 'reddoghub'
 
 resource azuresql 'Microsoft.Sql/servers@2020-11-01-preview' = {
   name: '${prefix}-sqlserver'

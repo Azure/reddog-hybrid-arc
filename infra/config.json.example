@@ -18,10 +18,6 @@
     },
     "branches":[
         {
-            "branchName":"brooklyn",
-            "location":"eastus"
-        },
-        {
             "branchName":"redmond",
             "location":"westus"
         }
