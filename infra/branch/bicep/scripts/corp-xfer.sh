@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#set -x
 
 BASEDIR=$(pwd | sed 's!infra.*!!g')
 
@@ -6,27 +7,6 @@ source $BASEDIR/infra/common/utils.subr
 source $BASEDIR/infra/common/branch.subr
 
 source ./var.sh
-
-# Corp Transfer
-corp_transfer_fix_init() {
-    # generates the corp-transfer-fx
-    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
-
-    # Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
-    kubectl apply -f $BASEDIR/manifests/corp-transfer-secret.yaml -n reddog-retail
-    kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
-}
-
-#### Corp Transfer Function
-rabbitmq_create_bindings(){
-    # Manually create 2 queues/bindings in Rabbit MQ
-    run_on_jumpbox 'rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; 
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues;
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true;
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders";
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true;
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
-}
 
 show_params() {
   # Set Variables from var.sh
@@ -44,6 +24,7 @@ show_params() {
   echo "SSH_KEY_PATH: $SSH_KEY_PATH"
   echo "SSH_KEY_NAME: $SSH_KEY_PATH/$SSH_KEY_NAME"
   echo "SSH_PUB_KEY: $SSH_PUB_KEY"
+  echo "RABBIT_MQ_PASSWD: $RABBIT_MQ_PASSWD"
   echo "------------------------------------------------"
 }
 
@@ -53,11 +34,47 @@ run_on_jumpbox () {
 
 show_params
 
-CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
-CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
+for branch in $BRANCHES
+do
+    export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
+    export RG_LOCATION=$(echo $branch|jq -r '.location')
+    export RG_NAME=$PREFIX-reddog-$BRANCH_NAME-$RG_LOCATION
+    export CLUSTER_IP_ADDRESS=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterIP.value)
+    export CLUSTER_FQDN=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .clusterFQDN.value)
+    
+    # Get the host name for the control host
+    JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
+    echo "Jump Host Name: $JUMP_VM_NAME" 
+    JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+    echo "Jump IP Address: $JUMP_IP" 
 
-# Get the host name for the control host
-JUMP_VM_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .jumpVMName.value)
-echo "Jump Host Name: $JUMP_VM_NAME" 
+    #run_on_jumpbox "sudo apt install -y rabbitmq-server"
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list exchanges"
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-orders" durable=true auto_delete=true"
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true"
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list queues"
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="orders" destination_type="queue" destination="corp-transfer-orders""
+    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted""
 
-run_on_jumpbox "kubectl get all -n rabbitmq"
+    # create the corp-transfer-fx on k8s
+    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
+
+    export RABBIT_CONNECT_STRING="amqp://contosoadmin:${RABBIT_MQ_PASSWD}@rabbitmq.rabbitmq.svc.cluster.local:5672"
+    export SB_CONNECT_STRING="Endpoint=sb://brian4-hub-servicebus-eastus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5kLEQgd0FBLrO6xSl03ZFg9rMyF4SOaaYKxKkRl5xvk="
+    
+    #run_on_jumpbox "echo $RABBIT_MQ_PASSWD;
+    #    echo $RABBIT_CONNECT_STRING;"
+
+    SB_NAME=$(jq -r .serviceBusName.value ./outputs/brian4-reddog-hub-eastus-bicep-outputs.json)
+    RG_NAME='brian4-reddog-hub-eastus'
+
+    SB_CONNECTION_STRING=$(az servicebus namespace authorization-rule keys list \
+    --resource-group $RG_NAME \
+    --namespace-name  $SB_NAME \
+    --name RootManageSharedAccessKey | jq -r '.primaryConnectionString')
+
+    run_on_jumpbox "kubectl create secret generic -n reddog-retail corp-transfer-service --from-literal=FUNCTIONS_WORKER_RUNTIME=node --from-literal=rabbitMQConnectionAppSetting=${RABBIT_CONNECT_STRING} --from-literal=MyServiceBusConnection=${SB_CONNECT_STRING}"
+
+    #kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
+
+done
