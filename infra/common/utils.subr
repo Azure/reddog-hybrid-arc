@@ -168,7 +168,7 @@ kv_add_secrets() {
     echo "USER:${SQL_ADMIN_USER_NAME}"
     echo "PWD:${SQL_ADMIN_PASSWD}"
 
-    REDDOG_SQL_CONNECTION_STRING="Server=tcp:${AZURE_SQL_SERVER}.database.windows.net,1433;Database=reddog-corp;User ID=${SQL_ADMIN_USER_NAME};Password=${SQL_ADMIN_PASSWD};Encrypt=true;Connection Timeout=30;"
+    REDDOG_SQL_CONNECTION_STRING="Server=tcp:${AZURE_SQL_SERVER}.database.windows.net,1433;Database=reddoghub;User ID=${SQL_ADMIN_USER_NAME};Password=${SQL_ADMIN_PASSWD};Encrypt=true;Connection Timeout=30;"
     echo "CONNECT:${REDDOG_SQL_CONNECTION_STRING}"
 
     az keyvault secret set \
