@@ -23,7 +23,7 @@ Architecture Diagram
 
 This repo contains the scripts and configurations to deploy the [Red Dog Demo](https://github.com/Azure/reddog-code) to an example Hybrid Cloud environment. You will use a GitHub Codespaces environment to run the automated deployment script. 
 
-Get started in your own Azure sub [here.](docs/quickstart.md)
+Get started in your own Azure sub in the [Quickstart.](docs/quickstart.md)
 
 ### Contributing
 
