@@ -48,33 +48,30 @@ do
     JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
     echo "Jump IP Address: $JUMP_IP" 
 
-    #run_on_jumpbox "sudo apt install -y rabbitmq-server"
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list exchanges"
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-orders" durable=true auto_delete=true"
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true"
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list queues"
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="orders" destination_type="queue" destination="corp-transfer-orders""
-    #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted""
+    run_on_jumpbox "sudo apt install -y rabbitmq-server"
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list exchanges"
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-orders" durable=true auto_delete=true"
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true"
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list queues"
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="orders" destination_type="queue" destination="corp-transfer-orders""
+    run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted""
 
     # create the corp-transfer-fx on k8s
     export RABBIT_CONNECT_STRING="amqp://contosoadmin:${RABBIT_MQ_PASSWD}@rabbitmq.rabbitmq.svc.cluster.local:5672"
-    export SB_CONNECT_STRING="Endpoint=sb://brian4-hub-servicebus-eastus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5kLEQgd0FBLrO6xSl03ZFg9rMyF4SOaaYKxKkRl5xvk="
-    
-    #run_on_jumpbox "echo $RABBIT_MQ_PASSWD;
-    #    echo $RABBIT_CONNECT_STRING;"
+    echo "RabbitMQ: ${RABBIT_CONNECT_STRING}"
 
-    SB_NAME=$(jq -r .serviceBusName.value ./outputs/brian4-reddog-hub-eastus-bicep-outputs.json)
-    RG_NAME='brian4-reddog-hub-eastus'
+    SB_NAME=$(jq -r .serviceBusName.value ./outputs/brian3-reddog-hub-eastus-bicep-outputs.json)
+    echo "Service Bus Name: ${SB_NAME}"
+    RG_NAME='brian3-reddog-hub-eastus'
 
     SB_CONNECTION_STRING=$(az servicebus namespace authorization-rule keys list \
     --resource-group $RG_NAME \
     --namespace-name  $SB_NAME \
     --name RootManageSharedAccessKey -o json | jq -r '.primaryConnectionString')
 
-    echo $SB_CONNECTION_STRING
+    echo "Service Bus: ${SB_CONNECTION_STRING}"
      
     #run_on_jumpbox "kubectl create secret generic -n reddog-retail corp-transfer-service --from-literal=FUNCTIONS_WORKER_RUNTIME=node --from-literal=rabbitMQConnectionAppSetting=${RABBIT_CONNECT_STRING} --from-literal=MyServiceBusConnection=${SB_CONNECT_STRING}"
-
-    #kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
+    #run_on_jumpbox "kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
 
 done
