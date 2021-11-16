@@ -1,0 +1,8 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+      "FUNCTIONS_WORKER_RUNTIME": "node",
+      "MyServiceBusConnection": "Endpoint=sb://",
+      "rabbitMQConnectionAppSetting": "amqp://contosoadmin:pwd@rabbitmq.rabbitmq.svc.cluster.local:5672"
+    }
+  }
