@@ -57,8 +57,6 @@ do
     #run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted""
 
     # create the corp-transfer-fx on k8s
-    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
-
     export RABBIT_CONNECT_STRING="amqp://contosoadmin:${RABBIT_MQ_PASSWD}@rabbitmq.rabbitmq.svc.cluster.local:5672"
     export SB_CONNECT_STRING="Endpoint=sb://brian4-hub-servicebus-eastus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5kLEQgd0FBLrO6xSl03ZFg9rMyF4SOaaYKxKkRl5xvk="
     
@@ -71,9 +69,11 @@ do
     SB_CONNECTION_STRING=$(az servicebus namespace authorization-rule keys list \
     --resource-group $RG_NAME \
     --namespace-name  $SB_NAME \
-    --name RootManageSharedAccessKey | jq -r '.primaryConnectionString')
+    --name RootManageSharedAccessKey -o json | jq -r '.primaryConnectionString')
 
-    run_on_jumpbox "kubectl create secret generic -n reddog-retail corp-transfer-service --from-literal=FUNCTIONS_WORKER_RUNTIME=node --from-literal=rabbitMQConnectionAppSetting=${RABBIT_CONNECT_STRING} --from-literal=MyServiceBusConnection=${SB_CONNECT_STRING}"
+    echo $SB_CONNECTION_STRING
+     
+    #run_on_jumpbox "kubectl create secret generic -n reddog-retail corp-transfer-service --from-literal=FUNCTIONS_WORKER_RUNTIME=node --from-literal=rabbitMQConnectionAppSetting=${RABBIT_CONNECT_STRING} --from-literal=MyServiceBusConnection=${SB_CONNECT_STRING}"
 
     #kubectl apply -f $BASEDIR/manifests/corp-transfer-fx.yaml -n reddog-retail
 
