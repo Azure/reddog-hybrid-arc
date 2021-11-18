@@ -21,15 +21,15 @@ spec:
     spec:
       containers:
         - name: ui
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:466e367
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:23da54c
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
           env:
             - name: VUE_APP_SITE_TITLE
-              value: "Red Dog Pharmacy - Store"
+              value: Red Dog Pharmacy - Store
             - name: VUE_APP_SITE_TYPE
-              value: "Pharmacy"          
+              value: Pharmacy
             - name: VUE_APP_IS_CORP
               value: 'false'
             - name: VUE_APP_STORE_ID
