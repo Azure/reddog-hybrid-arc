@@ -70,7 +70,7 @@ This Quickstart will allow you to deploy the demo in your own Azure sub. The scr
     The complete deployment can take 15-20 minutes. Run it and get some coffee
 
     ```bash
-    ➜  infra git:(main) ./walk-the-dog.sh
+    ➜  infra git:(main) make all
     ```
 
     When the script completes successfully, you will see something such as: 
