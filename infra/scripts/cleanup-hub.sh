@@ -2,7 +2,7 @@
 set -eo pipefail
 
 source ./scripts/load-vars-from-config.sh
-source ./scripts/create-and-load-ssh-keys.sh
+source ./scripts/create-and-load-ssh-keys.sh cleanup
 
 # Delete SSH Keys
 rm -rf $SSH_KEY_PATH

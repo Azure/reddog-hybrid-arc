@@ -2,7 +2,7 @@
 set -eo pipefail
 
 source ./scripts/load-vars-from-config.sh
-source ./scripts/create-and-load-ssh-keys.sh
+source ./scripts/create-and-load-ssh-keys.sh cleanup
 
 # Delete Branch Resource Groups
 for branch in $BRANCHES
