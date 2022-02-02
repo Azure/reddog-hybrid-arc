@@ -1,0 +1,18 @@
+{
+    "subscription_id": "",
+    "tenant_id": "",
+    "admin_user_name": "reddogadmin",
+    "rgNamePrefix": "btr123",
+    "k3s_token": "CAa6BYPyp+6NwLY5f3or",
+    "rabbit_mq_passwd": "MyPassword123",
+    "redis_passwd": "MyPassword123",
+    "sql_admin_user_name": "reddogadmin",
+    "sql_admin_passwd": "nJ0fqrQx7T^NZFl4sFf*U",
+    
+    "branches":[
+        {
+            "branchName":"denver",
+            "location":"eastus"
+        }
+    ]
+}
