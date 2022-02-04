@@ -221,15 +221,95 @@ create_branch() {
   #dapr_init
   gitops_reddog_create
 
-  # Configure RabbitMQ and install Corp Tx Function (need to finalize)
-  #rabbitmq_create_bindings | run_on_jumpbox
-  #keda_init | run_on_jumpbox > we don't need Keda, already installed
-  #corp_transfer_fix_init
-  #corp_transfer_fix_apply | run_on_jumpbox
+  echo "[branch: $BRANCH_NAME] - Enabling the App Service Arc Extension ..." | tee /dev/tty
+  
+  echo "[branch: $BRANCH_NAME] - Create Log Analytics Workspace" | tee /dev/tty
+  # Setup Arc App Svc Extension
+  APP_SVC_LA_WORKSPACE_NAME=$RG_NAME-la
+  # Create Workspace
+  az monitor log-analytics workspace create \
+    --resource-group $RG_NAME \
+    --workspace-name $APP_SVC_LA_WORKSPACE_NAME
 
-  # install some tools on the jumpbox
-  # BR-removing k9s for now (for time sake)
-  #run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
+  # Get Workspace ID and encode
+  APP_SVC_LA_ID=$(az monitor log-analytics workspace show \
+  --resource-group $RG_NAME \
+  --workspace-name $APP_SVC_LA_WORKSPACE_NAME \
+  --query customerId --output tsv)
+
+  APP_SVC_LA_ID_ENCODED=$(printf %s $APP_SVC_LA_ID | base64) 
+
+  APP_SVC_LA_KEY=$(az monitor log-analytics workspace get-shared-keys \
+    --resource-group $RG_NAME \
+    --workspace-name $APP_SVC_LA_WORKSPACE_NAME \
+    --query primarySharedKey \
+    --output tsv)
+
+  APP_SVC_LA_KEY_ENCODED_SPACE=$(printf %s $APP_SVC_LA_KEY | base64)
+  APP_SVC_LA_KEY_ENCODED=$(echo -n "${APP_SVC_LA_KEY_ENCODED_SPACE//[[:space:]]/}") 
+
+  echo "[branch: $BRANCH_NAME] - Enable App Service Extension" | tee /dev/tty
+  # Configure Extension. 
+  run_on_jumpbox "
+  az k8s-extension create
+  --resource-group $RG_NAME
+  --name $RG_NAME-appsvc
+  --cluster-type connectedClusters
+  --cluster-name $RG_NAME-branch
+  --extension-type 'Microsoft.Web.Appservice'
+  --release-train stable
+  --auto-upgrade-minor-version true
+  --scope cluster
+  --release-namespace appservices
+  --configuration-settings 'Microsoft.CustomLocation.ServiceAccount=default'
+  --configuration-settings 'appsNamespace=appservices'
+  --configuration-settings 'clusterName=$RG_NAME-branch'
+  --configuration-settings 'loadBalancerIp=$CLUSTER_IP_ADDRESS'
+  --configuration-settings 'buildService.storageClassName=local-path'
+  --configuration-settings 'buildService.storageAccessMode=ReadWriteOnce'
+  --configuration-settings 'customConfigMap=appservices/kube-environment-config'
+  --configuration-settings 'logProcessor.appLogs.destination=log-analytics'
+  --configuration-protected-settings 'logProcessor.appLogs.logAnalyticsConfig.customerId=${APP_SVC_LA_ID_ENCODED}'
+  --configuration-protected-settings 'logProcessor.appLogs.logAnalyticsConfig.sharedKey=${APP_SVC_LA_KEY_ENCODED}'"
+
+  EXTN_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $RG_NAME-branch \
+  --resource-group $RG_NAME \
+  --name $RG_NAME-appsvc \
+  --query id \
+  --output tsv)
+
+  #TODO REMOVE
+  echo Extension ID: $EXTN_ID
+  
+  echo "[branch: $BRANCH_NAME] - Wait for extension to be provisioned" | tee /dev/tty
+  # The Azure Docs recommend waiting until the extension is fully created before proceeding with any additional steps. The below command can help with that.
+  az resource wait --ids $EXTN_ID --custom "properties.installState!='Pending'" --api-version "2020-07-01-preview"
+
+  CUSTOM_LOC_NAME=$RG_NAME-branch-cl
+  ARC_CLUSTER_ID=$(az connectedk8s show --resource-group $RG_NAME --name $RG_NAME-branch --query id --output tsv)
+  
+  #TODO REMOVE
+  echo Custom location name: $CUSTOM_LOC_NAME
+  echo Arc Cluster ID: $ARC_CLUSTER_ID
+
+  echo "[branch: $BRANCH_NAME] - Create Custom Location" | tee /dev/tty
+  # Enable the feature on the connected cluster 
+  run_on_jumpbox "az connectedk8s enable-features -n $RG_NAME-branch -g $RG_NAME --features cluster-connect custom-locations"
+
+  az customlocation create \
+    --resource-group $RG_NAME \
+    --name $CUSTOM_LOC_NAME \
+    --host-resource-id $ARC_CLUSTER_ID \
+    --namespace appservices \
+    --cluster-extension-ids $EXTN_ID
+
+  CUSTOM_LOC_ID=$(az customlocation show \
+    --resource-group $RG_NAME \
+    --name $CUSTOM_LOC_NAME \
+    --query id \
+    --output tsv)
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************

@@ -19,6 +19,8 @@ param k3sToken string
 
 var lbName = '${name}-lb'
 
+var appsvcPort80 = 80
+var appsvcPort443 = 443
 var uiPort = 8081
 var makelinePort = 8082
 var accountingPort = 8083
@@ -69,6 +71,38 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
       }  
     ]
     loadBalancingRules: [
+      {
+        name: 'appsvc80-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: appsvcPort80
+          backendPort: appsvcPort80
+          protocol: 'Tcp'
+        }
+      }
+      {
+        name: 'appsvc443-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: appsvcPort443
+          backendPort: appsvcPort443
+          protocol: 'Tcp'
+        }
+      }            
       {
         name: 'ui-inbound'
         properties: {
@@ -132,13 +166,41 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
   location: resourceGroup().location
   properties: {
     securityRules: [
+       {
+        name: 'allow-inet-inbound-appsvc-${appsvc80}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${appsvc80}'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${appsvc80}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+       {
+        name: 'allow-inet-inbound-appsvc-${appsvc443}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffice on :${appsvc443}'
+          direction: 'Inbound'
+          priority: 110
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${appsvc443}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }      
       {
         name: 'allow-inet-inbound-ui-${uiPort}'
         properties: {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${uiPort}'
           direction: 'Inbound'
-          priority: 100
+          priority: 120
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${uiPort}'
@@ -152,7 +214,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${makelinePort}'
           direction: 'Inbound'
-          priority: 110
+          priority: 130
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${makelinePort}'
@@ -166,7 +228,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           access: 'Allow'
           description: 'Allow Internet Inbound traffice on :${accountingPort}'
           direction: 'Inbound'
-          priority: 120
+          priority: 140
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
           destinationPortRange: '${accountingPort}'
