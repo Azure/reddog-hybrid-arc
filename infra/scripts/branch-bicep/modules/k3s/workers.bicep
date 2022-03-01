@@ -221,6 +221,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }
+      }
       {
         name: 'allow-inet-inbound-appsvc-${appsvcHttpsPort}'
         properties: {

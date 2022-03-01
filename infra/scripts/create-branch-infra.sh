@@ -296,7 +296,8 @@ create_branch() {
 
   echo "[branch: $BRANCH_NAME] - Create Custom Location" | tee /dev/tty
   # Enable the feature on the connected cluster 
-  run_on_jumpbox "az connectedk8s enable-features -n $RG_NAME-branch -g $RG_NAME --features cluster-connect custom-locations"
+  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv)
+  run_on_jumpbox "az connectedk8s enable-features -n $RG_NAME-branch -g $RG_NAME --custom-locations-oid $ARC_OID --features cluster-connect custom-locations"
 
   az customlocation create \
     --resource-group $RG_NAME \
@@ -310,6 +311,27 @@ create_branch() {
     --name $CUSTOM_LOC_NAME \
     --query id \
     --output tsv)
+
+  PIP=$(az network public-ip show -g $RG_NAME -n $PREFIX$BRANCH_NAME-k3s-worker-pub-ip --query "ipAddress" -o tsv)
+
+  echo "[branch: $BRANCH_NAME] - Create App Service environment" | tee /dev/tty
+  az appservice kube create \
+    --resource-group $RG_NAME \
+    --name $RG_NAME-env \
+    --custom-location $CUSTOM_LOC_ID \
+    --static-ip $PIP
+
+  az appservice kube wait -g $RG_NAME -n $RG_NAME-env --created
+
+  echo "[branch: $BRANCH_NAME] - Create App Service plan" | tee /dev/tty      
+  az appservice plan create -g $RG_NAME -n $RG_NAME-plan \
+    --custom-location $CUSTOM_LOC_ID \
+    --per-site-scaling --is-linux --sku K1      
+
+  ## TODO Deploy function ###
+
+  echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
+  rabbitmq_create_bindings  
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
