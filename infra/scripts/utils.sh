@@ -196,7 +196,7 @@ gitops_dependency_create() {
         CLUSTER_NAME=$AKS_NAME
     else
         _manifest_path="branch"
-        CLUSTER_NAME=$RG_NAME-branch
+        CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
     fi
 
     az k8s-configuration create --name $RG_NAME-${_target}-deps \
@@ -235,7 +235,7 @@ gitops_reddog_create() {
         CLUSTER_NAME=$AKS_NAME
     else
         _manifest_path="branch"
-        CLUSTER_NAME=$RG_NAME-branch
+        CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
     fi
 
     az k8s-configuration create --name $RG_NAME-${_target}-base \
