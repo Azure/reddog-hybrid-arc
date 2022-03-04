@@ -21,7 +21,7 @@ param k3sControlSubnetInfo object = {
 param k3sWorkersSubnetInfo object = {
   name: 'K3sWorkerSubnet'
   properties: {
-    addressPrefix: '10.128.2.0/24'
+    addressPrefix: '10.128.2.0/24'   
   }
 }
 param jumpboxSubnetInfo object = {
@@ -77,10 +77,28 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
     subnets: [
       loadBalancerSubnetInfo
       k3sControlSubnetInfo
-      k3sWorkersSubnetInfo
-      jumpboxSubnetInfo
     ]
   }
+
+  resource workerSubnet 'subnets' = {
+    name: k3sWorkersSubnetInfo.name
+    properties: {
+       addressPrefix: k3sWorkersSubnetInfo.properties.addressPrefix
+       networkSecurityGroup: {
+         id: workerSubnetNsg.id
+       }
+    }
+  }
+
+  resource jumpboxSubnet 'subnets' = {
+    name: jumpboxSubnetInfo.name
+    properties: {
+       addressPrefix: jumpboxSubnetInfo.properties.addressPrefix
+       networkSecurityGroup: {
+         id: jumpboxSubnetNsg.id
+       }
+    }
+  }  
 }
 
 resource receiptstorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
@@ -223,6 +241,52 @@ resource sqlsecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-preview' = {
   name: '${keyvault.name}/reddog-sql'
   properties: {
     value: sqldbconnectionstring
+  }
+}
+
+resource workerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: '${name}-worker-subnet-nsg'
+  location: resourceGroup().location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-inet-inbound-ui-8081'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :8081'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '8081'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }    
+    ]
+  }
+}
+
+resource jumpboxSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: '${name}-jump-subnet-nsg'
+  location: resourceGroup().location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-inet-inbound-ssh-2022'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :2022'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '2022'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }    
+    ]
   }
 }
 
