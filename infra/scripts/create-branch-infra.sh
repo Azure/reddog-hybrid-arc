@@ -56,16 +56,13 @@ sql_init() {
 #### Corp Transfer Function
 rabbitmq_create_bindings(){
     # Manually create 2 queues/bindings in Rabbit MQ
-        run_on_jumpbox \
-        'which kubectl; \
-        which rabbitmqadmin; \
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=rabbitmq -n rabbitmq; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders"; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
+        run_on_jumpbox "kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=rabbitmq -n rabbitmq;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list exchanges;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list queues;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name=corp-transfer-orders durable=true auto_delete=true;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source=orders destination_type=queue destination=corp-transfer-orders;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name=corp-transfer-ordercompleted durable=true auto_delete=true;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source=ordercompleted destination_type=queue destination=corp-transfer-ordercompleted;"
 }
 
 ssh_copy_key_to_jumpbox() {
@@ -338,7 +335,7 @@ create_branch() {
   rm settings.json settings2.json
 
   echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
-  rabbitmq_create_bindings    
+  rabbitmq_create_bindings     
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************

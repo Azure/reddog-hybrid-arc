@@ -11,12 +11,14 @@ do
     export RG_LOCATION=$(echo $branch|jq -r '.location')
     export RG_NAME=$PREFIX-reddog-$BRANCH_NAME-$RG_LOCATION
 
-    # Cleanup SSH keys
-    echo "Deleting SSH keys"
-    rm $SSH_KEY_PATH/$PREFIX\_id_rsa.pub
-    rm $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
+    # KV certificate cleanup
+    echo "Deleting KV certificate"
+    if [ -f $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx ];
+    then
+        rm $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
+    fi
 
     # Create Branch
     echo "Deleting Resource Group: $RG_NAME"
-    az group delete -n $RG_NAME -y --no-wait    
+    az group delete -n $RG_NAME -y --no-wait
 done
