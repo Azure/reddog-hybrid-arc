@@ -125,8 +125,7 @@ create_branch() {
     --parameters adminPublicKey="$SSH_PUB_KEY" \
     --parameters currentUserId="$CURRENT_USER_ID" \
     --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
-    --parameters redispassword=$REDIS_PASSWD \
-    --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+    --parameters redispassword=$REDIS_PASSWD
 
   # Save deployment outputs
   mkdir -p outputs
@@ -166,7 +165,7 @@ create_branch() {
 
   # Deploy initial cluster resources
   echo "[branch: $BRANCH_NAME] - Creating Namespaces ..." | tee /dev/tty
-  run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
+  run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
 
   # Create branch config secrets
   echo "[branch: $BRANCH_NAME] - Creating branch config secrets" | tee /dev/tty
@@ -175,10 +174,9 @@ create_branch() {
   # Use Dapr inside the UI pod
   run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://localhost:3500/v1.0/invoke/make-line-service/method --from-literal=accounting_base_url=http://localhost:3500/v1.0/invoke/accounting-service/method"
 
-  echo "[branch: $BRANCH_NAME] - Creating RabbitMQ, Redis and MsSQL Password Secrets ..." | tee /dev/tty
+  echo "[branch: $BRANCH_NAME] - Creating RabbitMQ and Redis Password Secrets ..." | tee /dev/tty
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
   run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
-  run_on_jumpbox "kubectl create secret generic mssql --from-literal=SA_PASSWORD=$SQL_ADMIN_PASSWD -n sql "
 
   # Arc join the cluster
   # Get managed identity object id
@@ -213,14 +211,137 @@ create_branch() {
   #gitops_configuration_create
   gitops_dependency_create
   
-  # Initialize SQL in the cluster
-  sql_init
+  # Deploy SQL on Arc
+  deploy_sql_arc
 
   # Initialize Dapr in the cluster
-  echo "[branch: $BRANCH_NAME] - Deploing Dapr and the reddog app configs ..." | tee /dev/tty
+  echo "[branch: $BRANCH_NAME] - Deploying Dapr and the reddog app configs ..." | tee /dev/tty
   #dapr_init
   gitops_reddog_create
 
+  # Deploy App Service on Arc
+  deploy_appsvc_arc
+
+  echo "[branch: $BRANCH_NAME] - Deploy the corp transfer function" | tee /dev/tty
+  FUNC_NAME=$PREFIX$BRANCH_NAME-func-corp-xfer
+  FUNC_STOR_ACC=$PREFIX$BRANCH_NAME\funcstor
+  SB_CONN=$(az servicebus namespace authorization-rule keys list -g $PREFIX-reddog-$HUBNAME-$RG_LOCATION --namespace-name $PREFIX-hub-servicebus-$RG_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
+  MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
+  az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
+  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
+  az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
+  jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
+  az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
+  rm settings.json settings2.json
+
+  echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
+  rabbitmq_create_bindings     
+
+  read -r -d '' COMPLETE_MESSAGE << EOM
+****************************************************
+[branch: $BRANCH_NAME] - Deployment Complete! 
+Jump server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
+Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
+****************************************************
+EOM
+ 
+  echo "$COMPLETE_MESSAGE" | tee /dev/tty
+}
+
+# Corp Transfer
+corp_transfer_fix_init() {
+    # generates the corp-transfer-fx
+    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
+    export JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
+    scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $BASEDIR/manifests/corp-transfer-secret.yaml $ADMIN_USER_NAME@$JUMP_IP:~/corp-transfer-secret.yaml
+    scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $BASEDIR/manifests/corp-transfer-fx.yaml $ADMIN_USER_NAME@$JUMP_IP:~/corp-transfer-fx.yaml
+}
+
+corp_transfer_fix_apply() {
+    # Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
+    # we will copy these files to the jumpbox and execute the kubectl locally there
+    echo \
+    'kubectl apply -f corp-transfer-secret.yaml -n reddog-retail;
+    kubectl apply -f corp-transfer-fx.yaml -n reddog-retail'
+}
+
+keda_init() {
+    # KEDA
+    echo \
+    'helm repo add kedacore https://kedacore.github.io/charts;
+    helm repo update;
+    helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda'
+}
+
+deploy_sql_arc() {
+  echo "[branch: $BRANCH_NAME] - Enable Data Controller Extension" | tee /dev/tty
+  DATA_CTRL_EXTN_NAME=$PREFIX$BRANCH_NAME-data
+  DATA_CTRL_NS=$PREFIX$BRANCH_NAME-data
+  run_on_jumpbox "az k8s-extension create --cluster-name $ARC_CLUSTER_NAME --resource-group $RG_NAME --name $DATA_CTRL_EXTN_NAME --cluster-type connectedClusters --extension-type microsoft.arcdataservices --auto-upgrade false --scope cluster --release-namespace $DATA_CTRL_NS --config Microsoft.CustomLocation.ServiceAccount=sa-arc-bootstrapper --no-wait"
+
+  echo "[branch: $BRANCH_NAME] - Wait for extension to be provisioned" | tee /dev/tty
+  DATA_CTRL_EXT_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $ARC_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --name $DATA_CTRL_EXTN_NAME \
+  --query id \
+  --output tsv)
+  az resource wait --ids $DATA_CTRL_EXT_ID --custom "properties.installState=='Installed'" --api-version "2020-07-01-preview"
+
+  echo "[branch: $BRANCH_NAME] - Assigning permissions to the Data Controller" | tee /dev/tty
+  MSI_OBJECT_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $ARC_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --name $DATA_CTRL_EXTN_NAME \
+  --query identity.principalId \
+  --output tsv)
+  az role assignment create --assignee $MSI_OBJECT_ID --role "Contributor" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME"
+  az role assignment create --assignee $MSI_OBJECT_ID --role "Monitoring Metrics Publisher" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME"
+
+  echo "[branch: $BRANCH_NAME] - Create Custom Location for the Data Controller" | tee /dev/tty
+  # Enable the feature on the connected cluster 
+  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv)
+  run_on_jumpbox "az connectedk8s enable-features -n $ARC_CLUSTER_NAME -g $RG_NAME --custom-locations-oid $ARC_OID --features cluster-connect custom-locations"
+  DATA_CTRL_CUSTOM_LOC_NAME=$PREFIX$BRANCH_NAME-data-cl
+  ARC_CLUSTER_ID=$(az connectedk8s show --resource-group $RG_NAME --name $ARC_CLUSTER_NAME --query id --output tsv)
+  az customlocation create --resource-group $RG_NAME --name $DATA_CTRL_CUSTOM_LOC_NAME --namespace $DATA_CTRL_NS --host-resource-id $ARC_CLUSTER_ID \
+                           --cluster-extension-ids $DATA_CTRL_EXT_ID --location $RG_LOCATION
+  DATA_CTRL_CUSTOM_LOC_ID=$(az customlocation show \
+    --resource-group $RG_NAME \
+    --name $DATA_CTRL_CUSTOM_LOC_NAME \
+    --query id \
+    --output tsv)  
+
+  echo "[branch: $BRANCH_NAME] - Create the Data Controller" | tee /dev/tty
+  DATA_CTRL_NAME=$PREFIX$BRANCH_NAME-data
+  export AZDATA_USERNAME=$SQL_ADMIN_USER_NAME
+  export AZDATA_PASSWORD=$SQL_ADMIN_PASSWD
+  az arcdata dc create --name $DATA_CTRL_NAME --resource-group $RG_NAME --location $RG_LOCATION --connectivity-mode direct \
+                       --profile-name "azure-arc-kubeadm" --auto-upload-logs true --auto-upload-metrics true \
+                       --custom-location $DATA_CTRL_CUSTOM_LOC_NAME --storage-class "local-path"
+
+  echo "[branch: $BRANCH_NAME] - Create the SQL Managed Instance" | tee /dev/tty
+  SQL_MI_NAME=sqlmi # 15 char limit including -0 (13 limit)
+  SQL_MI_NS=sqlmi
+  az sql mi-arc create --name $SQL_MI_NAME --resource-group $RG_NAME --location $RG_LOCATION --subscription $SUBSCRIPTION_ID \
+                       --custom-location $DATA_CTRL_CUSTOM_LOC_NAME --dev
+  SQL_ENDPOINT=$(az sql mi-arc show --name $SQL_MI_NAME --resource-group $RG_NAME --query "properties.k8_s_raw.status.endpoints.primary" -o tsv)
+
+  echo "[branch: $BRANCH_NAME] - Create the SQL database" | tee /dev/tty
+  run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+  run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S $SQL_ENDPOINT -U $SQL_ADMIN_USER_NAME -P $SQL_ADMIN_PASSWD -Q \"create database reddog\""
+
+  echo "[branch: $BRANCH_NAME] - Set database conneciton string" | tee /dev/tty
+  REDDOG_SQL_CONNECTION_STRING="Server=$SQL_ENDPOINT;Database=reddog;User ID=${SQL_ADMIN_USER_NAME};Password=${SQL_ADMIN_PASSWD};Encrypt=true;Connection Timeout=30;"
+  az keyvault secret set \
+      --vault-name $KV_NAME \
+      --name reddog-sql \
+      --value "${REDDOG_SQL_CONNECTION_STRING}"
+}
+
+deploy_appsvc_arc() {
   echo "[branch: $BRANCH_NAME] - Enabling the App Service Arc Extension ..." | tee /dev/tty
   
   echo "[branch: $BRANCH_NAME] - Create Log Analytics Workspace" | tee /dev/tty
@@ -286,13 +407,8 @@ create_branch() {
   az resource wait --ids $APP_SVC_EXT_ID --custom "properties.installState=='Installed'" --api-version "2020-07-01-preview"
 
   CUSTOM_LOC_NAME=$PREFIX$BRANCH_NAME-appsvc-cl
-  ARC_CLUSTER_ID=$(az connectedk8s show --resource-group $RG_NAME --name $ARC_CLUSTER_NAME --query id --output tsv)
 
   echo "[branch: $BRANCH_NAME] - Create Custom Location" | tee /dev/tty
-  # Enable the feature on the connected cluster 
-  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv)
-  run_on_jumpbox "az connectedk8s enable-features -n $ARC_CLUSTER_NAME -g $RG_NAME --custom-locations-oid $ARC_OID --features cluster-connect custom-locations"
-
   az customlocation create \
     --resource-group $RG_NAME \
     --name $CUSTOM_LOC_NAME \
@@ -320,57 +436,7 @@ create_branch() {
   APP_SVC_PLAN_NAME=$PREFIX$BRANCH_NAME-appsvc-plan
   az appservice plan create -g $RG_NAME -n $APP_SVC_PLAN_NAME \
     --custom-location $CUSTOM_LOC_ID \
-    --per-site-scaling --is-linux --sku K1    
-
-  echo "[branch: $BRANCH_NAME] - Deploy the corp transfer function" | tee /dev/tty
-  FUNC_NAME=$PREFIX$BRANCH_NAME-func-corp-xfer
-  FUNC_STOR_ACC=$PREFIX$BRANCH_NAME\funcstor
-  SB_CONN=$(az servicebus namespace authorization-rule keys list -g $PREFIX-reddog-$HUBNAME-$RG_LOCATION --namespace-name $PREFIX-hub-servicebus-$RG_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
-  MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
-  az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
-  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
-  az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
-  jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
-  az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
-  rm settings.json settings2.json
-
-  echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
-  rabbitmq_create_bindings     
-
-  read -r -d '' COMPLETE_MESSAGE << EOM
-****************************************************
-[branch: $BRANCH_NAME] - Deployment Complete! 
-Jump server connection info: ssh $ADMIN_USER_NAME@$JUMP_IP -i $SSH_KEY_PATH/$SSH_KEY_NAME -p 2022
-Cluster connection info: http://$CLUSTER_IP_ADDRESS:8081 or http://$CLUSTER_FQDN:8081
-****************************************************
-EOM
- 
-  echo "$COMPLETE_MESSAGE" | tee /dev/tty
-}
-
-# Corp Transfer
-corp_transfer_fix_init() {
-    # generates the corp-transfer-fx
-    #func kubernetes deploy --name corp-transfer-service --javascript --registry ghcr.io/cloudnativegbb/paas-vnext --polling-interval 20 --cooldown-period 300 --dry-run > corp-transfer-fx.yaml
-    export JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
-    scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $BASEDIR/manifests/corp-transfer-secret.yaml $ADMIN_USER_NAME@$JUMP_IP:~/corp-transfer-secret.yaml
-    scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $BASEDIR/manifests/corp-transfer-fx.yaml $ADMIN_USER_NAME@$JUMP_IP:~/corp-transfer-fx.yaml
-}
-
-corp_transfer_fix_apply() {
-    # Corp Transfer Service Secret (need to run the func deploy and edit to only include secret)
-    # we will copy these files to the jumpbox and execute the kubectl locally there
-    echo \
-    'kubectl apply -f corp-transfer-secret.yaml -n reddog-retail;
-    kubectl apply -f corp-transfer-fx.yaml -n reddog-retail'
-}
-
-keda_init() {
-    # KEDA
-    echo \
-    'helm repo add kedacore https://kedacore.github.io/charts;
-    helm repo update;
-    helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda'
+    --per-site-scaling --is-linux --sku K1   
 }
 
 #####################################################################
