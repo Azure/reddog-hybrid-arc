@@ -334,7 +334,7 @@ deploy_sql_arc() {
   run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S $SQL_ENDPOINT -U $SQL_ADMIN_USER_NAME -P $SQL_ADMIN_PASSWD -Q \"create database reddog\""
 
   echo "[branch: $BRANCH_NAME] - Set database conneciton string" | tee /dev/tty
-  REDDOG_SQL_CONNECTION_STRING="Server=$SQL_ENDPOINT;Database=reddog;User ID=${SQL_ADMIN_USER_NAME};Password=${SQL_ADMIN_PASSWD};Encrypt=true;Connection Timeout=30;"
+  REDDOG_SQL_CONNECTION_STRING="Server=tcp:$SQL_ENDPOINT;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
   az keyvault secret set \
       --vault-name $KV_NAME \
       --name reddog-sql \
