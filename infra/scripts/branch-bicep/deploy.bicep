@@ -47,6 +47,43 @@ var jumpName = '${name}-jump'
 var workerName = '${name}-worker'
 var contributorDefId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 
+var loadBalancerSubnet = {
+  name: loadBalancerSubnetInfo.name
+  properties: {
+    addressPrefix: loadBalancerSubnetInfo.properties.addressPrefix
+    networkSecurityGroup: {
+      id: loadBalancerSubnetNsg.id
+    }    
+  }
+}
+var k3sControlSubnet = {
+  name: k3sControlSubnetInfo.name
+  properties: {
+    addressPrefix: k3sControlSubnetInfo.properties.addressPrefix
+    networkSecurityGroup: {
+      id: controlSubnetNsg.id
+    }     
+  }
+}
+var k3sWorkersSubnet = {
+  name: k3sWorkersSubnetInfo.name
+  properties: {
+    addressPrefix: k3sWorkersSubnetInfo.properties.addressPrefix
+    networkSecurityGroup: {
+      id: workerSubnetNsg.id
+    }       
+  }
+}
+var jumpboxSubnet = {
+  name: jumpboxSubnetInfo.name
+  properties: {
+    addressPrefix: jumpboxSubnetInfo.properties.addressPrefix
+    networkSecurityGroup: {
+      id: jumpboxSubnetNsg.id
+    }       
+  }
+}
+
 // ************** Resources **************
 resource userAssignedMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: '${prefix}branchManagedIdentity'
@@ -74,32 +111,12 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
       ]
     }
     subnets: [
-      loadBalancerSubnetInfo
-      k3sControlSubnetInfo
-      k3sWorkersSubnetInfo
-      jumpboxSubnetInfo
+      loadBalancerSubnet
+      k3sControlSubnet
+      k3sWorkersSubnet
+      jumpboxSubnet
     ]
   }
-
-  resource workerSubnet 'subnets' = {
-    name: k3sWorkersSubnetInfo.name
-    properties: {
-       addressPrefix: k3sWorkersSubnetInfo.properties.addressPrefix
-       networkSecurityGroup: {
-         id: workerSubnetNsg.id
-       }
-    }
-  }
-
-  resource jumpboxSubnet 'subnets' = {
-    name: jumpboxSubnetInfo.name
-    properties: {
-       addressPrefix: jumpboxSubnetInfo.properties.addressPrefix
-       networkSecurityGroup: {
-         id: jumpboxSubnetNsg.id
-       }
-    }
-  }  
 }
 
 resource receiptstorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
@@ -126,7 +143,7 @@ module control 'modules/k3s/control.bicep' = {
     adminUsername: adminUsername
     adminPublicKey: adminPublicKey
     k3sToken: k3sToken
-  }
+  } 
 }
 
 module jump 'modules/k3s/jump.bicep' = {
@@ -233,6 +250,16 @@ resource blobstoragekeysecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-prev
   properties: {
     value: receiptstorage.listKeys().keys[0].value
   }
+}
+
+resource loadBalancerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: '${name}-loadbalancer-subnet-nsg'
+  location: resourceGroup().location
+}
+
+resource controlSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: '${name}-control-subnet-nsg'
+  location: resourceGroup().location
 }
 
 resource workerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
