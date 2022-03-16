@@ -241,6 +241,9 @@ gitops_reddog_create() {
         CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
     fi
 
+    BRANCH=$(git branch --show-current)
+    REPO_URL=$(git remote get-url origin)    
+
     az k8s-configuration create --name $RG_NAME-${_target}-base \
         --cluster-name $CLUSTER_NAME \
         --resource-group $RG_NAME \
@@ -248,8 +251,8 @@ gitops_reddog_create() {
         --cluster-type connectedClusters \
         --operator-instance-name base \
         --operator-namespace reddog-retail \
-        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=main --manifest-generation=true" \
-        --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=$BRANCH --manifest-generation=true" \
+        --repository-url $REPO_URL
 
     # Should check to see if pods are running
 

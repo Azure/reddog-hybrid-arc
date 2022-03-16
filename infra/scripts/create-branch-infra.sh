@@ -84,6 +84,8 @@ ssh_copy_key_to_jumpbox() {
 
 # Loop through $BRANCHES (from config.json) and create branches
 create_branches() {
+  export HUB_RG=$RG_NAME
+  export HUB_LOCATION=$RG_LOCATION
   for branch in $BRANCHES
   do
     export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
@@ -225,17 +227,21 @@ create_branch() {
   echo "[branch: $BRANCH_NAME] - Deploy the corp transfer function" | tee /dev/tty
   FUNC_NAME=$PREFIX$BRANCH_NAME-func-corp-xfer
   FUNC_STOR_ACC=$PREFIX$BRANCH_NAME\funcstor
-  SB_CONN=$(az servicebus namespace authorization-rule keys list -g $PREFIX-reddog-$HUBNAME-$RG_LOCATION --namespace-name $PREFIX-hub-servicebus-$RG_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
+  SB_CONN=$(az servicebus namespace authorization-rule keys list -g $HUB_RG --namespace-name $PREFIX-hub-servicebus-$HUB_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
   MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
   az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
   az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
   az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
-  jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
-  az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
-  rm settings.json settings2.json
+  jq "del(.[] | select(.name == \"FUNCTIONS_WORKER_RUNTIME\"))" settings.json > settings2.json
+  jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings2.json > settings3.json
+  az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings3.json
+  rm settings.json settings2.json settings3.json
 
   echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
   rabbitmq_create_bindings     
+
+  ### TODO: Insert branch @ corp db
+  # insert into storelocation (storeid, city, stateprovince, postalcode, country, latitude, longitude) values ('denver', 'denver', 'CO', 'PC', 'USA', 39.737150, -104.989174)
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
