@@ -248,23 +248,23 @@ az webapp create \
     -p ReddogAppServicePlan \
     -i ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:latest
 
-ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 while [[ $ACCOUNTING_IP == "" ]]; do
-ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 echo "Waiting for accounting service..."
 sleep 5
 done
 
-MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 while [[ $MAKELINE_IP == "" ]]; do
-MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 echo "Waiting for make line service..."
 sleep 5
 done
 
-ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 while [[ $ORDER_IP == "" ]]; do
-ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
 echo "Waiting for order service..."
 sleep 5
 done
