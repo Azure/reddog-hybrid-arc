@@ -14,7 +14,7 @@ var customData = base64(format('''
 #cloud-config
 package_upgrade: true
 runcmd:
-  - curl -sfL https://get.k3s.io | K3S_TOKEN={0} INSTALL_K3S_EXEC="server --disable traefik" sh -s -
+  - curl -sfL https://get.k3s.io | K3S_TOKEN={0} INSTALL_K3S_EXEC="server" sh -s -
 ''',k3sToken))
 
 param name string

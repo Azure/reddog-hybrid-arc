@@ -19,6 +19,8 @@ param k3sToken string
 
 var lbName = '${name}-lb'
 
+var appsvcHttpPort = 80
+var appsvcHttpsPort = 443
 var uiPort = 8081
 var makelinePort = 8082
 var accountingPort = 8083
@@ -69,6 +71,38 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
       }  
     ]
     loadBalancingRules: [
+       {
+        name: 'appsvc-http-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: appsvcHttpPort
+          backendPort: appsvcHttpPort
+          protocol: 'Tcp'
+        }
+      }
+       {
+        name: 'appsvc-https-inbound'
+        properties: {
+          backendAddressPools:[
+            {
+              id: resourceId('Microsoft.Network/loadBalancers/backendAddressPools', lbName, 'k3sworkers')
+            }
+          ]
+          frontendIPConfiguration: {
+            id: resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', lbName, '${name}-frontend-ip')
+          }
+          frontendPort: appsvcHttpsPort
+          backendPort: appsvcHttpsPort
+          protocol: 'Tcp'
+        }
+      }      
       {
         name: 'ui-inbound'
         properties: {
@@ -174,6 +208,34 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           sourcePortRange: '*'
         }
       }
+      {
+        name: 'allow-inet-inbound-appsvc-${appsvcHttpPort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :${appsvcHttpPort}'
+          direction: 'Inbound'
+          priority: 130
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${appsvcHttpPort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-appsvc-${appsvcHttpsPort}'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :${appsvcHttpsPort}'
+          direction: 'Inbound'
+          priority: 140
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '${appsvcHttpPort}'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }        
+      }      
     ]
   }
 }

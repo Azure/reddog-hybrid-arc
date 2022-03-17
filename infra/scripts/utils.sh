@@ -196,8 +196,11 @@ gitops_dependency_create() {
         CLUSTER_NAME=$AKS_NAME
     else
         _manifest_path="branch"
-        CLUSTER_NAME=$RG_NAME-branch
+        CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
     fi
+
+    BRANCH=$(git branch --show-current)
+    REPO_URL=$(git remote get-url origin)
 
     az k8s-configuration create --name $RG_NAME-${_target}-deps \
         --cluster-name $CLUSTER_NAME \
@@ -206,10 +209,10 @@ gitops_dependency_create() {
         --cluster-type connectedClusters \
         --operator-instance-name flux \
         --operator-namespace flux \
-        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/dependencies --git-branch=main --manifest-generation=true" \
+        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/dependencies --git-branch=$BRANCH --manifest-generation=true" \
         --enable-helm-operator \
         --helm-operator-params='--set helm.versions=v3' \
-        --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+        --repository-url $REPO_URL
     
     # Checks if dapr is running before proceeding
     #local provisioningState="Pending"
@@ -235,8 +238,11 @@ gitops_reddog_create() {
         CLUSTER_NAME=$AKS_NAME
     else
         _manifest_path="branch"
-        CLUSTER_NAME=$RG_NAME-branch
+        CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
     fi
+
+    BRANCH=$(git branch --show-current)
+    REPO_URL=$(git remote get-url origin)    
 
     az k8s-configuration create --name $RG_NAME-${_target}-base \
         --cluster-name $CLUSTER_NAME \
@@ -245,8 +251,8 @@ gitops_reddog_create() {
         --cluster-type connectedClusters \
         --operator-instance-name base \
         --operator-namespace reddog-retail \
-        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=main --manifest-generation=true" \
-        --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+        --operator-params="--git-readonly --git-path=manifests/${_manifest_path}/base --git-branch=$BRANCH --manifest-generation=true" \
+        --repository-url $REPO_URL
 
     # Should check to see if pods are running
 

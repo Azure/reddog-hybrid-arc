@@ -10,12 +10,6 @@ param aksSubnetInfo object = {
     privateEndpointNetworkPolicies: 'Disabled'
   }
 }
-param jumpboxSubnetInfo object = {
-  name: 'JumpboxSubnet'
-  properties: {
-    addressPrefix: '10.0.255.240/28'
-  }
-}
 
 // Linux Config
 param adminUsername string
@@ -32,6 +26,16 @@ param currentUserId string
 var name = '${prefix}-hub'
 // var jumpName = '${name}-jump'
 
+var aksSubnet = {
+  name: aksSubnetInfo.name
+  properties: {
+    addressPrefix: aksSubnetInfo.properties.addressPrefix
+    networkSecurityGroup: {
+      id: aksSubnetNsg.id
+    }       
+  }
+}
+
 //
 // Top Level Resources
 //
@@ -46,8 +50,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-08-01' = {
       ]
     }
     subnets: [
-      aksSubnetInfo
-      jumpboxSubnetInfo
+      aksSubnet
     ]
   } 
 }
@@ -110,12 +113,12 @@ module loganalytics 'modules/loganalytics.bicep' = {
   }
 }
 
-module webapp 'modules/webapp.bicep' = {
-  name: 'webapp'
-  params: {
-    sku: 'S1'
-  }
-}
+// module webapp 'modules/webapp.bicep' = {
+//   name: 'webapp'
+//   params: {
+//     sku: 'S1'
+//   }
+// }
 
 module storageaccount 'modules/storageaccount.bicep' = {
   name: 'storageaccount'
@@ -135,16 +138,28 @@ module aks 'modules/aks.bicep' = {
   
 }
 
-// module jump 'modules/jump.bicep' = {
-//   name: '${jumpName}-deployment'
-//   params: {
-//     name: jumpName 
-//     subnetId: '${vnet.id}/subnets/${jumpboxSubnetInfo.name}'
-//     adminUsername: adminUsername
-//     adminPublicKey: adminPublicKey
-//     //managedIdentity: jumpManagedIdentity
-//   }
-//}
+resource aksSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: '${name}-aks-subnet-nsg'
+  location: resourceGroup().location
+  properties: {
+    securityRules: [
+      {
+        name: 'allow-inet-inbound-svc-8082-8084'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :8082-8084'
+          direction: 'Inbound'
+          priority: 100
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '8082-8084'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }    
+    ]
+  }
+}
 
 // Outputs
 output keyvaultName string = keyvault.outputs.name
