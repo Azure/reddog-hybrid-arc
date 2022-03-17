@@ -230,7 +230,7 @@ create_branch() {
   SB_CONN=$(az servicebus namespace authorization-rule keys list -g $HUB_RG --namespace-name $PREFIX-hub-servicebus-$HUB_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
   MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
   az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
-  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
+  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --functions-version 3 --custom-location $CUSTOM_LOC_ID --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
   az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
   jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
   az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
@@ -281,6 +281,7 @@ keda_init() {
 
 deploy_sql_arc() {
   echo "[branch: $BRANCH_NAME] - Enable Data Controller Extension" | tee /dev/tty
+  az provider register --namespace "Microsoft.AzureArcData" --wait
   DATA_CTRL_EXTN_NAME=$PREFIX$BRANCH_NAME-data
   DATA_CTRL_NS=$PREFIX$BRANCH_NAME-data
   run_on_jumpbox "az k8s-extension create --cluster-name $ARC_CLUSTER_NAME --resource-group $RG_NAME --name $DATA_CTRL_EXTN_NAME --cluster-type connectedClusters --extension-type microsoft.arcdataservices --auto-upgrade false --scope cluster --release-namespace $DATA_CTRL_NS --config Microsoft.CustomLocation.ServiceAccount=sa-arc-bootstrapper --no-wait"
