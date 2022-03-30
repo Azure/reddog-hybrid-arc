@@ -231,7 +231,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
           priority: 140
           protocol: 'Tcp'
           destinationAddressPrefix: '*'
-          destinationPortRange: '${appsvcHttpPort}'
+          destinationPortRange: '${appsvcHttpsPort}'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }        
