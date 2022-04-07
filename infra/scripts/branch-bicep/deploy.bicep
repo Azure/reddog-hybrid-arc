@@ -294,7 +294,7 @@ resource jumpboxSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' =
         name: 'allow-inet-inbound-ssh-2022'
         properties: {
           access: 'Allow'
-          description: 'Allow Internet Inbound traffic on :2022'
+          description: 'Allow Internet Inbound traffic on: 2022'
           direction: 'Inbound'
           priority: 100
           protocol: 'Tcp'
@@ -303,7 +303,21 @@ resource jumpboxSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' =
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }
-      }    
+      }
+      {
+        name: 'allow-inet-inbound-kubectl-8001'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on: 8001'
+          direction: 'Inbound'
+          priority: 110
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '8001'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }          
     ]
   }
 }
