@@ -280,6 +280,34 @@ resource workerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = 
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
         }
+      }
+      {
+        name: 'allow-inet-inbound-makeline-8082'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :8082'
+          direction: 'Inbound'
+          priority: 110
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '8082'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
+      }
+      {
+        name: 'allow-inet-inbound-accounting-8083'
+        properties: {
+          access: 'Allow'
+          description: 'Allow Internet Inbound traffic on :8083'
+          direction: 'Inbound'
+          priority: 120
+          protocol: 'Tcp'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '8083'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+        }
       }    
     ]
   }
