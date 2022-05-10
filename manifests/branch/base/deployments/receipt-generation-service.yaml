@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: receipt-generation-service
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-receipt-generation-service:7ff348a
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-receipt-generation-service:c6388ea
           ports:
             - containerPort: 80
           imagePullPolicy: Always
