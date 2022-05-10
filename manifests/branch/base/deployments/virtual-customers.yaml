@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: virtual-customers
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-customers:7ff348a
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-customers:c6388ea
           imagePullPolicy: Always
           env:
             - name: STORE_ID
