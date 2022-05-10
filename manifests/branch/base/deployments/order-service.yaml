@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-order-service:98ad140
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-order-service:c6388ea
           ports:
             - containerPort: 80
           imagePullPolicy: Always
