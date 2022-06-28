@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: virtual-worker
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-worker:7ff348a
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-virtual-worker:c6388ea
           imagePullPolicy: Always
           startupProbe:
             httpGet:

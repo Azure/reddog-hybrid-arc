@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: loyalty-service
-          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-loyalty-service:7ff348a
+          image: ghcr.io/azure/reddog-retail-demo/reddog-retail-loyalty-service:c6388ea
           ports:
             - containerPort: 80
           imagePullPolicy: Always

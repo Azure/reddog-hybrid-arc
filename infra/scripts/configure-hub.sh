@@ -189,6 +189,8 @@ echo '----------------------------------------------------'
 echo 'Applying Arc Cluster Configuration'
 echo '----------------------------------------------------'
  # GitOps config for Hub AKS
+ BRANCH=$(git branch --show-current)
+ REPO_URL=$(git remote get-url origin)   
  AKS_NAME=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .aksName.value)
  az k8s-configuration create --name $RG_NAME-hub-deps \
  --cluster-name $AKS_NAME \
@@ -197,10 +199,10 @@ echo '----------------------------------------------------'
  --cluster-type connectedClusters \
  --operator-instance-name flux \
  --operator-namespace flux \
- --operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=main --manifest-generation=true" \
+ --operator-params="--git-readonly --git-path=manifests/corporate/dependencies --git-branch=$BRANCH --manifest-generation=true" \
  --enable-helm-operator \
  --helm-operator-params='--set helm.versions=v3' \
- --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+ --repository-url $REPO_URL
 
  # wait for Dapr to start
  sleep 300
@@ -218,8 +220,8 @@ echo '----------------------------------------------------'
  --cluster-type connectedClusters \
  --operator-instance-name base \
  --operator-namespace reddog-retail \
- --operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=main --manifest-generation=true" \
- --repository-url https://github.com/Azure/reddog-hybrid-arc.git
+ --operator-params="--git-readonly --git-path=manifests/corporate/base --git-branch=$BRANCH --manifest-generation=true" \
+ --repository-url $REPO_URL
 
 ###########################################################
 echo '----------------------------------------------------'
@@ -239,12 +241,82 @@ echo '----------------------------------------------------'
 echo 'Deploying the hub UI'
 echo '----------------------------------------------------'
 
+#az extension remove --name appservice-kube
 az webapp create \
     -n $RG_NAME-ui \
     -g $RG_NAME \
     -p ReddogAppServicePlan \
     -i ghcr.io/azure/reddog-retail-demo/reddog-retail-ui:latest
+
+ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+while [[ $ACCOUNTING_IP == "" ]]; do
+ACCOUNTING_IP=$(kubectl get svc accounting-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+echo "Waiting for accounting service..."
+sleep 5
+done
+
+MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+while [[ $MAKELINE_IP == "" ]]; do
+MAKELINE_IP=$(kubectl get svc make-line-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+echo "Waiting for make line service..."
+sleep 5
+done
+
+ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+while [[ $ORDER_IP == "" ]]; do
+ORDER_IP=$(kubectl get svc order-service -n reddog-retail -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo '')
+echo "Waiting for order service..."
+sleep 5
+done
+
+cat > settings.json << EOL
+[
+  {
+    "name": "NODE_ENV",
+    "slotSetting": false,
+    "value": "production"
+  },
+  {
+    "name": "VUE_APP_ACCOUNTING_BASE_URL",
+    "slotSetting": false,
+    "value": "http://$ACCOUNTING_IP:8083"
+  },
+  {
+    "name": "VUE_APP_IS_CORP",
+    "slotSetting": false,
+    "value": "true"
+  },
+  {
+    "name": "VUE_APP_MAKELINE_BASE_URL",
+    "slotSetting": false,
+    "value": "http://$MAKELINE_IP:8082"
+  },
+  {
+    "name": "VUE_APP_ORDER_BASE_URL",
+    "slotSetting": false,
+    "value": "http://$ORDER_IP:8084"
+  },
+  {
+    "name": "VUE_APP_SITE_TITLE",
+    "slotSetting": false,
+    "value": "Red Dog Pharmacy"
+  },
+  {
+    "name": "VUE_APP_SITE_TYPE",
+    "slotSetting": false,
+    "value": "Pharmacy"
+  },
+  {
+    "name": "VUE_APP_STORE_ID",
+    "slotSetting": false,
+    "value": "Corp"
+  }
+]
+EOL
+az webapp config appsettings set -g $RG_NAME -n $RG_NAME-ui --settings @settings.json
+rm settings.json
 ###########################################################
+
 
 echo '****************************************************'
 echo 'Hub configured successfully.'

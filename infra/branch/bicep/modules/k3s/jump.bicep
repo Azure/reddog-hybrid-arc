@@ -22,7 +22,7 @@ runcmd:
   # Install Azure CLI
   - curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
   # Install rabbitmqadmin
-  - sudo apt install rabbitmq-server
+  - sudo apt install rabbitmq-server -y
   # change the default ssh port
   - echo "Port 2022" >> /etc/ssh/sshd_config
   - systemctl restart ssh

@@ -56,14 +56,13 @@ sql_init() {
 #### Corp Transfer Function
 rabbitmq_create_bindings(){
     # Manually create 2 queues/bindings in Rabbit MQ
-        run_on_jumpbox \
-        'kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=rabbitmq -n rabbitmq; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list exchanges; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 list queues; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-orders" durable=true auto_delete=true; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="orders" destination_type="queue" destination="corp-transfer-orders"; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare queue name="corp-transfer-ordercompleted" durable=true auto_delete=true; \
-        rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p MyPassword123 declare binding source="ordercompleted" destination_type="queue" destination="corp-transfer-ordercompleted";'
+        run_on_jumpbox "kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=rabbitmq -n rabbitmq;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list exchanges;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD list queues;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name=corp-transfer-orders durable=true auto_delete=true;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source=orders destination_type=queue destination=corp-transfer-orders;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare queue name=corp-transfer-ordercompleted durable=true auto_delete=true;"
+        run_on_jumpbox "rabbitmqadmin -H 10.128.1.4 -u contosoadmin -p $RABBIT_MQ_PASSWD declare binding source=ordercompleted destination_type=queue destination=corp-transfer-ordercompleted;"
 }
 
 ssh_copy_key_to_jumpbox() {
@@ -85,6 +84,8 @@ ssh_copy_key_to_jumpbox() {
 
 # Loop through $BRANCHES (from config.json) and create branches
 create_branches() {
+  export HUB_RG=$RG_NAME
+  export HUB_LOCATION=$RG_LOCATION
   for branch in $BRANCHES
   do
     export BRANCH_NAME=$(echo $branch|jq -r '.branchName')
@@ -126,8 +127,7 @@ create_branch() {
     --parameters adminPublicKey="$SSH_PUB_KEY" \
     --parameters currentUserId="$CURRENT_USER_ID" \
     --parameters rabbitmqconnectionstring="amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672" \
-    --parameters redispassword=$REDIS_PASSWD \
-    --parameters sqldbconnectionstring="Server=tcp:mssql-deployment.sql.svc.cluster.local,1433;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+    --parameters redispassword=$REDIS_PASSWD
 
   # Save deployment outputs
   mkdir -p outputs
@@ -167,7 +167,7 @@ create_branch() {
 
   # Deploy initial cluster resources
   echo "[branch: $BRANCH_NAME] - Creating Namespaces ..." | tee /dev/tty
-  run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system;kubectl create ns sql"
+  run_on_jumpbox "kubectl create ns reddog-retail;kubectl create ns rabbitmq;kubectl create ns redis;kubectl create ns dapr-system"
 
   # Create branch config secrets
   echo "[branch: $BRANCH_NAME] - Creating branch config secrets" | tee /dev/tty
@@ -176,10 +176,9 @@ create_branch() {
   # Use Dapr inside the UI pod
   run_on_jumpbox "kubectl create secret generic -n reddog-retail branch.config --from-literal=store_id=$BRANCH_NAME --from-literal=makeline_base_url=http://localhost:3500/v1.0/invoke/make-line-service/method --from-literal=accounting_base_url=http://localhost:3500/v1.0/invoke/accounting-service/method"
 
-  echo "[branch: $BRANCH_NAME] - Creating RabbitMQ, Redis and MsSQL Password Secrets ..." | tee /dev/tty
+  echo "[branch: $BRANCH_NAME] - Creating RabbitMQ and Redis Password Secrets ..." | tee /dev/tty
   run_on_jumpbox "kubectl create secret generic rabbitmq-password --from-literal=rabbitmq-password=$RABBIT_MQ_PASSWD -n rabbitmq"
   run_on_jumpbox "kubectl create secret generic redis-password --from-literal=redis-password=$REDIS_PASSWD -n redis"
-  run_on_jumpbox "kubectl create secret generic mssql --from-literal=SA_PASSWORD=$SQL_ADMIN_PASSWD -n sql "
 
   # Arc join the cluster
   # Get managed identity object id
@@ -192,7 +191,8 @@ create_branch() {
   echo "User Assigned Managed Identity Object ID: $MI_OBJ_ID"
 
   echo "[branch: $BRANCH_NAME] - Arc joining the branch cluster ..." | tee /dev/tty
-  run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $RG_NAME-branch --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
+  ARC_CLUSTER_NAME=$PREFIX$BRANCH_NAME-arc
+  run_on_jumpbox "az connectedk8s connect -g $RG_NAME -n $ARC_CLUSTER_NAME --distribution k3s --infrastructure generic --custom-locations-oid $MI_OBJ_ID"
 
   # Key Vault dependencies
   kv_init
@@ -213,23 +213,35 @@ create_branch() {
   #gitops_configuration_create
   gitops_dependency_create
   
-  # Initialize SQL in the cluster
-  sql_init
+  # Deploy SQL on Arc
+  deploy_sql_arc
 
   # Initialize Dapr in the cluster
-  echo "[branch: $BRANCH_NAME] - Deploing Dapr and the reddog app configs ..." | tee /dev/tty
+  echo "[branch: $BRANCH_NAME] - Deploying Dapr and the reddog app configs ..." | tee /dev/tty
   #dapr_init
   gitops_reddog_create
 
-  # Configure RabbitMQ and install Corp Tx Function (need to finalize)
-  #rabbitmq_create_bindings | run_on_jumpbox
-  #keda_init | run_on_jumpbox > we don't need Keda, already installed
-  #corp_transfer_fix_init
-  #corp_transfer_fix_apply | run_on_jumpbox
+  # Deploy App Service on Arc
+  deploy_appsvc_arc
 
-  # install some tools on the jumpbox
-  # BR-removing k9s for now (for time sake)
-  #run_on_jumpbox "curl -sS https://webinstall.dev/k9s | bash && echo export PATH="/home/reddogadmin/.local/bin:$PATH" >> ~/.bashrc"
+  echo "[branch: $BRANCH_NAME] - Deploy the corp transfer function" | tee /dev/tty
+  FUNC_NAME=$PREFIX$BRANCH_NAME-func-corp-xfer
+  FUNC_STOR_ACC=$PREFIX$BRANCH_NAME\funcstor
+  SB_CONN=$(az servicebus namespace authorization-rule keys list -g $HUB_RG --namespace-name $PREFIX-hub-servicebus-$HUB_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
+  MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
+  az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
+  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --functions-version 3 --custom-location $CUSTOM_LOC_ID --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
+  az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
+  jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
+  az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
+  az functionapp config appsettings delete -g $RG_NAME -n $FUNC_NAME --setting-names FUNCTIONS_WORKER_RUNTIME
+  rm settings.json settings2.json
+
+  echo "[branch: $BRANCH_NAME] - Create corp transfer queues in RabbitMQ" | tee /dev/tty
+  rabbitmq_create_bindings     
+
+  echo "[branch: $BRANCH_NAME] - Adding branch to Corp database" | tee /dev/tty
+  run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S $PREFIX-hub-sqlserver.database.windows.net -U $SQL_ADMIN_USER_NAME -P $SQL_ADMIN_PASSWD -d reddoghub -Q \"insert into storelocation (storeid, city, stateprovince, postalcode, country, latitude, longitude) values ('$BRANCH_NAME', '$BRANCH_NAME', 'SP', 'PC', 'CT', 1, 1)\""
 
   read -r -d '' COMPLETE_MESSAGE << EOM
 ****************************************************
@@ -265,6 +277,173 @@ keda_init() {
     'helm repo add kedacore https://kedacore.github.io/charts;
     helm repo update;
     helm install keda kedacore/keda --version 2.0.0 --create-namespace --namespace keda'
+}
+
+deploy_sql_arc() {
+  echo "[branch: $BRANCH_NAME] - Enable Data Controller Extension" | tee /dev/tty
+  az provider register --namespace "Microsoft.AzureArcData" --wait
+  DATA_CTRL_EXTN_NAME=$PREFIX$BRANCH_NAME-data
+  DATA_CTRL_NS=$PREFIX$BRANCH_NAME-data
+  run_on_jumpbox "az k8s-extension create --cluster-name $ARC_CLUSTER_NAME --resource-group $RG_NAME --name $DATA_CTRL_EXTN_NAME --cluster-type connectedClusters --extension-type microsoft.arcdataservices --auto-upgrade false --scope cluster --release-namespace $DATA_CTRL_NS --config Microsoft.CustomLocation.ServiceAccount=sa-arc-bootstrapper --no-wait"
+
+  echo "[branch: $BRANCH_NAME] - Wait for extension to be provisioned" | tee /dev/tty
+  DATA_CTRL_EXT_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $ARC_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --name $DATA_CTRL_EXTN_NAME \
+  --query id \
+  --output tsv)
+  az resource wait --ids $DATA_CTRL_EXT_ID --custom "properties.installState=='Installed'" --api-version "2020-07-01-preview"
+
+  echo "[branch: $BRANCH_NAME] - Assigning permissions to the Data Controller" | tee /dev/tty
+  MSI_OBJECT_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $ARC_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --name $DATA_CTRL_EXTN_NAME \
+  --query identity.principalId \
+  --output tsv)
+  az role assignment create --assignee $MSI_OBJECT_ID --role "Contributor" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME"
+  az role assignment create --assignee $MSI_OBJECT_ID --role "Monitoring Metrics Publisher" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME"
+
+  echo "[branch: $BRANCH_NAME] - Create Custom Location for the Data Controller" | tee /dev/tty
+  # Enable the feature on the connected cluster 
+  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv)
+  run_on_jumpbox "az connectedk8s enable-features -n $ARC_CLUSTER_NAME -g $RG_NAME --custom-locations-oid $ARC_OID --features cluster-connect custom-locations"
+  DATA_CTRL_CUSTOM_LOC_NAME=$PREFIX$BRANCH_NAME-data-cl
+  ARC_CLUSTER_ID=$(az connectedk8s show --resource-group $RG_NAME --name $ARC_CLUSTER_NAME --query id --output tsv)
+  az customlocation create --resource-group $RG_NAME --name $DATA_CTRL_CUSTOM_LOC_NAME --namespace $DATA_CTRL_NS --host-resource-id $ARC_CLUSTER_ID \
+                           --cluster-extension-ids $DATA_CTRL_EXT_ID --location $RG_LOCATION
+  DATA_CTRL_CUSTOM_LOC_ID=$(az customlocation show \
+    --resource-group $RG_NAME \
+    --name $DATA_CTRL_CUSTOM_LOC_NAME \
+    --query id \
+    --output tsv)  
+
+  echo "[branch: $BRANCH_NAME] - Create the Data Controller" | tee /dev/tty
+  DATA_CTRL_NAME=$PREFIX$BRANCH_NAME-data
+  export AZDATA_USERNAME=$SQL_ADMIN_USER_NAME
+  export AZDATA_PASSWORD=$SQL_ADMIN_PASSWD
+  az arcdata dc create --name $DATA_CTRL_NAME --resource-group $RG_NAME --location $RG_LOCATION --connectivity-mode direct \
+                       --profile-name "azure-arc-kubeadm" --auto-upload-logs true --auto-upload-metrics true \
+                       --custom-location $DATA_CTRL_CUSTOM_LOC_NAME --storage-class "local-path"
+
+  echo "[branch: $BRANCH_NAME] - Create the SQL Managed Instance" | tee /dev/tty
+  SQL_MI_NAME=sqlmi # 15 char limit including -0 (13 limit)
+  SQL_MI_NS=sqlmi
+  az sql mi-arc create --name $SQL_MI_NAME --resource-group $RG_NAME --location $RG_LOCATION --subscription $SUBSCRIPTION_ID \
+                       --custom-location $DATA_CTRL_CUSTOM_LOC_NAME --dev
+  SQL_ENDPOINT=$(az sql mi-arc show --name $SQL_MI_NAME --resource-group $RG_NAME --query "properties.k8_s_raw.status.endpoints.primary" -o tsv)
+
+  echo "[branch: $BRANCH_NAME] - Create the SQL database" | tee /dev/tty
+  run_on_jumpbox "DEBIAN_FRONTEND=noninteractive; curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - ; curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list; sudo apt-get update; sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev;"
+  run_on_jumpbox "/opt/mssql-tools/bin/sqlcmd -S $SQL_ENDPOINT -U $SQL_ADMIN_USER_NAME -P $SQL_ADMIN_PASSWD -Q \"create database reddog\""
+
+  echo "[branch: $BRANCH_NAME] - Set database conneciton string" | tee /dev/tty
+  REDDOG_SQL_CONNECTION_STRING="Server=tcp:$SQL_ENDPOINT;Initial Catalog=reddog;Persist Security Info=False;User ID=$SQL_ADMIN_USER_NAME;Password=$SQL_ADMIN_PASSWD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+  az keyvault secret set \
+      --vault-name $KV_NAME \
+      --name reddog-sql \
+      --value "${REDDOG_SQL_CONNECTION_STRING}"
+}
+
+deploy_appsvc_arc() {
+  echo "[branch: $BRANCH_NAME] - Enabling the App Service Arc Extension ..." | tee /dev/tty
+  
+  echo "[branch: $BRANCH_NAME] - Create Log Analytics Workspace" | tee /dev/tty
+  # Setup Arc App Svc Extension
+  APP_SVC_LA_WORKSPACE_NAME=$PREFIX$BRANCH_NAME-la
+  # Create Workspace
+  az monitor log-analytics workspace create \
+    --resource-group $RG_NAME \
+    --workspace-name $APP_SVC_LA_WORKSPACE_NAME
+
+  # Get Workspace ID and encode
+  APP_SVC_LA_ID=$(az monitor log-analytics workspace show \
+  --resource-group $RG_NAME \
+  --workspace-name $APP_SVC_LA_WORKSPACE_NAME \
+  --query customerId --output tsv)
+
+  APP_SVC_LA_ID_ENCODED=$(printf %s $APP_SVC_LA_ID | base64) 
+
+  APP_SVC_LA_KEY=$(az monitor log-analytics workspace get-shared-keys \
+    --resource-group $RG_NAME \
+    --workspace-name $APP_SVC_LA_WORKSPACE_NAME \
+    --query primarySharedKey \
+    --output tsv)
+
+  APP_SVC_LA_KEY_ENCODED_SPACE=$(printf %s $APP_SVC_LA_KEY | base64)
+  APP_SVC_LA_KEY_ENCODED=$(echo -n "${APP_SVC_LA_KEY_ENCODED_SPACE//[[:space:]]/}") 
+
+  echo "[branch: $BRANCH_NAME] - Enable App Service Extension" | tee /dev/tty
+  APP_SVC_EXT_NAME=$PREFIX$BRANCH_NAME-appsvc
+  # Configure Extension. 
+  run_on_jumpbox "
+  az k8s-extension create
+  --resource-group $RG_NAME
+  --name $APP_SVC_EXT_NAME
+  --cluster-type connectedClusters
+  --cluster-name $ARC_CLUSTER_NAME
+  --extension-type 'Microsoft.Web.Appservice'
+  --release-train stable
+  --auto-upgrade-minor-version true
+  --scope cluster
+  --release-namespace appservices
+  --configuration-settings \"Microsoft.CustomLocation.ServiceAccount=default\"
+  --configuration-settings \"appsNamespace=appservices\"
+  --configuration-settings \"clusterName=$ARC_CLUSTER_NAME\"
+  --configuration-settings \"loadBalancerIp=$CLUSTER_IP_ADDRESS\"
+  --configuration-settings \"buildService.storageClassName=local-path\"
+  --configuration-settings \"buildService.storageAccessMode=ReadWriteOnce\"
+  --configuration-settings \"customConfigMap=appservices/kube-environment-config\"
+  --configuration-settings \"logProcessor.appLogs.destination=log-analytics\"
+  --configuration-protected-settings \"logProcessor.appLogs.logAnalyticsConfig.customerId=${APP_SVC_LA_ID_ENCODED}\"
+  --configuration-protected-settings \"logProcessor.appLogs.logAnalyticsConfig.sharedKey=${APP_SVC_LA_KEY_ENCODED}\"
+  --no-wait"
+
+  echo "[branch: $BRANCH_NAME] - Wait for extension to be provisioned" | tee /dev/tty
+  APP_SVC_EXT_ID=$(az k8s-extension show \
+  --cluster-type connectedClusters \
+  --cluster-name $ARC_CLUSTER_NAME \
+  --resource-group $RG_NAME \
+  --name $APP_SVC_EXT_NAME \
+  --query id \
+  --output tsv)
+  # The Azure Docs recommend waiting until the extension is fully created before proceeding with any additional steps. The below command can help with that.
+  az resource wait --ids $APP_SVC_EXT_ID --custom "properties.installState=='Installed'" --api-version "2020-07-01-preview"
+
+  CUSTOM_LOC_NAME=$PREFIX$BRANCH_NAME-appsvc-cl
+
+  echo "[branch: $BRANCH_NAME] - Create Custom Location" | tee /dev/tty
+  az customlocation create \
+    --resource-group $RG_NAME \
+    --name $CUSTOM_LOC_NAME \
+    --host-resource-id $ARC_CLUSTER_ID \
+    --namespace appservices \
+    --cluster-extension-ids $APP_SVC_EXT_ID
+
+  CUSTOM_LOC_ID=$(az customlocation show \
+    --resource-group $RG_NAME \
+    --name $CUSTOM_LOC_NAME \
+    --query id \
+    --output tsv)
+
+  echo "[branch: $BRANCH_NAME] - Create App Service environment" | tee /dev/tty
+  APP_SVC_ENV_NAME=$PREFIX$BRANCH_NAME-appsvc-env
+  az appservice kube create \
+    --resource-group $RG_NAME \
+    --name $APP_SVC_ENV_NAME \
+    --custom-location $CUSTOM_LOC_ID \
+    --static-ip $CLUSTER_IP_ADDRESS
+
+  az appservice kube wait -g $RG_NAME -n $APP_SVC_ENV_NAME --created
+
+  echo "[branch: $BRANCH_NAME] - Create App Service plan" | tee /dev/tty      
+  APP_SVC_PLAN_NAME=$PREFIX$BRANCH_NAME-appsvc-plan
+  az appservice plan create -g $RG_NAME -n $APP_SVC_PLAN_NAME \
+    --custom-location $CUSTOM_LOC_ID \
+    --per-site-scaling --is-linux --sku K1   
 }
 
 #####################################################################
