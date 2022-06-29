@@ -1,8 +1,9 @@
 param prefix string
+param location string = resourceGroup().location
 
 resource servicebus 'Microsoft.ServiceBus/namespaces@2021-01-01-preview' = {
-  name: '${prefix}-servicebus-${resourceGroup().location}'
-  location: resourceGroup().location
+  name: '${prefix}-servicebus-${location}'
+  location: location
   sku: {
     name: 'Standard' 
   }

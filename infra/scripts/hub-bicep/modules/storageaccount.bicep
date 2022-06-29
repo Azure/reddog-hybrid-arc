@@ -1,8 +1,9 @@
 param prefix string
+param location string = resourceGroup().location
 
 resource storageaccount 'Microsoft.Storage/storageAccounts@2021-02-01' = {
   name: '${prefix}reddoghubsa'
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard_LRS'
   }

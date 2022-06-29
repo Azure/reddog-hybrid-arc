@@ -1,6 +1,8 @@
 // Basic Naming Convention
 param prefix string
 
+param location string = resourceGroup().location
+
 // For AKV and other user IAM/RBAC
 param currentUserId string
 
@@ -87,7 +89,7 @@ var jumpboxSubnet = {
 // ************** Resources **************
 resource userAssignedMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: '${prefix}branchManagedIdentity'
-  location: resourceGroup().location
+  location: location
 }
 
 resource roleassignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
@@ -102,8 +104,8 @@ resource roleassignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
 
 // Create VNET
 resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
-  name: '${prefix}-k3s-${resourceGroup().location}-vnet'
-  location: resourceGroup().location
+  name: '${prefix}-k3s-${location}-vnet'
+  location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
@@ -121,7 +123,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-11-01' = {
 
 resource receiptstorage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: '${prefix}receipts'
-  location: resourceGroup().location
+  location: location
   kind: 'StorageV2'
   sku: {
     name: 'Standard_LRS'
@@ -254,17 +256,17 @@ resource blobstoragekeysecret 'Microsoft.KeyVault/vaults/secrets@2021-04-01-prev
 
 resource loadBalancerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
   name: '${name}-loadbalancer-subnet-nsg'
-  location: resourceGroup().location
+  location: location
 }
 
 resource controlSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
   name: '${name}-control-subnet-nsg'
-  location: resourceGroup().location
+  location: location
 }
 
 resource workerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
   name: '${name}-worker-subnet-nsg'
-  location: resourceGroup().location
+  location: location
   properties: {
     securityRules: [
       {
@@ -315,7 +317,7 @@ resource workerSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = 
 
 resource jumpboxSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
   name: '${name}-jump-subnet-nsg'
-  location: resourceGroup().location
+  location: location
   properties: {
     securityRules: [
       {

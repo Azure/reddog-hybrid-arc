@@ -2,6 +2,7 @@ param name string
 param adminUsername string
 param adminPublicKey string
 param subnetId string
+param location string = resourceGroup().location
 
 var defaultAksSettings = {
   kubernetesVersion: null
@@ -52,7 +53,7 @@ var defaultSystemNodePoolSettings = union(defaultNodePoolSettings, {
 
 resource aks 'Microsoft.ContainerService/managedClusters@2021-03-01' = {
   name: name 
-  location: resourceGroup().location  
+  location: location  
   identity: {
     type: defaultAksSettings.identity
   }

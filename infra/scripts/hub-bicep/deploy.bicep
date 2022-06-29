@@ -1,6 +1,8 @@
 // Naming convention requirements
 param prefix string
 
+param location string = resourceGroup().location
+
 // Network Settings
 param vnetPrefix string = '10.0.0.0/16'
 param aksSubnetInfo object = {
@@ -42,7 +44,7 @@ var aksSubnet = {
 
 resource vnet 'Microsoft.Network/virtualNetworks@2020-08-01' = {
   name: '${prefix}-hub-vnet'
-  location: resourceGroup().location
+  location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
@@ -59,6 +61,7 @@ module keyvault 'modules/keyvault.bicep' = {
   name: 'keyvault'
   params: {
     prefix: name
+    location: location
     accessPolicies: [
       {
         objectId: currentUserId
@@ -87,6 +90,11 @@ module cosmos 'modules/cosmos.bicep' = {
   name: 'cosmos'
   params: {
     prefix: name
+    locations: [
+      {
+        locationName: location
+      }
+    ]
   }
 }
 
@@ -94,6 +102,7 @@ module sqlServer 'modules/sqlazure.bicep' = {
   name: 'sqlserver'
   params: {
     prefix: name
+    location: location
     adminUsername: sqlAdminUsername
     adminPassword: sqlAdminPassword
   }
@@ -102,6 +111,7 @@ module sqlServer 'modules/sqlazure.bicep' = {
 module servicebus 'modules/servicebus.bicep' = {
   name: 'servicebus'
   params: {
+    location: location
     prefix: name
   }
 }
@@ -109,6 +119,7 @@ module servicebus 'modules/servicebus.bicep' = {
 module loganalytics 'modules/loganalytics.bicep' = {
   name: 'loganalytics'
   params: {
+    location: location
     retentionInDays: 30
   }
 }
@@ -123,6 +134,7 @@ module loganalytics 'modules/loganalytics.bicep' = {
 module storageaccount 'modules/storageaccount.bicep' = {
   name: 'storageaccount'
   params: {
+    location: location
     prefix: prefix
   }
 }
@@ -134,13 +146,14 @@ module aks 'modules/aks.bicep' = {
     adminUsername: adminUsername
     adminPublicKey: adminPublicKey
     subnetId: '${vnet.id}/subnets/${aksSubnetInfo.name}'
+    location: location
   }
   
 }
 
 resource aksSubnetNsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
   name: '${name}-aks-subnet-nsg'
-  location: resourceGroup().location
+  location: location
   properties: {
     securityRules: [
       {

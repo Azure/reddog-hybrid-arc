@@ -7,8 +7,8 @@ param locations array = [
 param databaseName string = toLower('reddog')
 
 resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-03-15' = {
-  name: '${prefix}-cosmos-${resourceGroup().location}'
-  location: resourceGroup().location
+  name: '${prefix}-cosmos-${locations[0].locationName}'
+  location: locations[0].locationName
   properties: {
     locations: locations
     databaseAccountOfferType: 'Standard'
