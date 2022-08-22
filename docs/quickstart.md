@@ -22,7 +22,7 @@ This Quickstart will allow you to deploy the demo in your own Azure sub. The scr
     * In the Codespace terminal, run Azure login:
 
         ```bash
-        ➜  infra git:(main) az login --use-device-code
+        ➜  infra git:(main) az login --scope https://graph.microsoft.com//.default
 
         To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code A9X791234 to authenticate.
         ```
