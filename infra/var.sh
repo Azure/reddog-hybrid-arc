@@ -45,7 +45,7 @@ if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
 	CURRENT_USER_ID=$ACC_OID
 else
 	# running outside of cloud-shell. We need to retrieve the current user
-	CURRENT_USER_ID=$(az ad signed-in-user show | jq -r .objectId)
+	CURRENT_USER_ID=$(az ad signed-in-user show | jq -r .id)
 fi
 export CURRENT_USER_ID
 

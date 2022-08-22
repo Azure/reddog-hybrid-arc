@@ -9,7 +9,7 @@ check_for_azure_login() {
 
     if [[ ${AZURE_LOGIN} -ne 0 ]]; then
     # not logged in. Initiate login process
-        az login --use-device-code
+        az login --scope https://graph.microsoft.com//.default
         export AZURE_LOGIN
     fi
 }
@@ -58,7 +58,7 @@ check_for_cloud-shell() {
         echo ' creating the service principal below.' 
         echo
         echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
-        az login --use-device-code
+        az login --scope https://graph.microsoft.com//.default
     fi
     # we are logged in at this point
     AZURE_LOGIN=1
