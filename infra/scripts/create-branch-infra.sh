@@ -332,7 +332,7 @@ deploy_sql_arc() {
   echo "[branch: $BRANCH_NAME] - Create the SQL Managed Instance" | tee /dev/tty
   SQL_MI_NAME=sqlmi # 15 char limit including -0 (13 limit)
   SQL_MI_NS=sqlmi
-  az sql mi-arc create --name $SQL_MI_NAME --resource-group $RG_NAME --location $RG_LOCATION --subscription $SUBSCRIPTION_ID \
+  az sql mi-arc create --name $SQL_MI_NAME --resource-group $RG_NAME --subscription $SUBSCRIPTION_ID \
                        --custom-location $DATA_CTRL_CUSTOM_LOC_NAME --dev
   SQL_ENDPOINT=$(az sql mi-arc show --name $SQL_MI_NAME --resource-group $RG_NAME --query "properties.k8_s_raw.status.endpoints.primary" -o tsv)
 
