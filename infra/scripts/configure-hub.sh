@@ -72,7 +72,7 @@ echo "AKV SP_APPID: $SP_APPID"
 
 ## Get SP Object ID
 echo "Getting SP_OBJECTID ..."
-SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+SP_OBJECTID=$(echo $SP_INFO | jq -r .[].id)
 echo "AKV SP_OBJECTID: $SP_OBJECTID"
 
 # Assign SP to KV with GET permissions

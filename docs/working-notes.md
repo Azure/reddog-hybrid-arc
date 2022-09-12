@@ -31,7 +31,7 @@ echo $SP_APPID
 echo "AKV SP_APPID: $SP_APPID"
 ## Get SP Object ID
 echo "Get SP_OBJECTID..."
-SP_OBJECTID=$(echo $SP_INFO | jq -r .[].objectId)
+SP_OBJECTID=$(echo $SP_INFO | jq -r .[].id)
 echo "AKV SP_OBJECTID: $SP_OBJECTID"
 # Assign SP to KV with GET permissions
 az keyvault set-policy --name $KV_NAME --object-id $SP_OBJECTID --secret-permissions get
