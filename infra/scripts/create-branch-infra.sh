@@ -116,6 +116,10 @@ create_branch() {
 
   # Deploy the jump server and K3s cluster
   echo "[branch: $BRANCH_NAME] - Deploying branch office resources ..." | tee /dev/tty
+
+  # Note: Ensure that ExtendedLocation provider is registered for the target subscription  
+  # az provider register --namespace Microsoft.ExtendedLocation
+
   az deployment group create \
     --name $ARM_DEPLOYMENT_NAME \
     --mode Incremental \
