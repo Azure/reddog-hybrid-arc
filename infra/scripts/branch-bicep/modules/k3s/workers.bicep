@@ -29,7 +29,7 @@ var customData = base64(format('''
 #cloud-config
 package_upgrade: true
 runcmd:
-  - curl -sfL https://get.k3s.io | K3S_URL=https://{0}:6443 K3S_TOKEN={1} sh -s -
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.0-rc2+k3s1 K3S_URL=https://{0}:6443 K3S_TOKEN={1} sh -s -
 ''',control,k3sToken))
 
 resource pubip 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
