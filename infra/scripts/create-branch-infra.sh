@@ -313,7 +313,7 @@ deploy_sql_arc() {
 
   echo "[branch: $BRANCH_NAME] - Create Custom Location for the Data Controller" | tee /dev/tty
   # Enable the feature on the connected cluster 
-  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query objectId -o tsv)
+  ARC_OID=$(az ad sp show --id 'bc313c14-388c-4e7d-a58e-70017303ee3b' --query id -o tsv)
   run_on_jumpbox "az connectedk8s enable-features -n $ARC_CLUSTER_NAME -g $RG_NAME --custom-locations-oid $ARC_OID --features cluster-connect custom-locations"
   DATA_CTRL_CUSTOM_LOC_NAME=$PREFIX$BRANCH_NAME-data-cl
   ARC_CLUSTER_ID=$(az connectedk8s show --resource-group $RG_NAME --name $ARC_CLUSTER_NAME --query id --output tsv)
