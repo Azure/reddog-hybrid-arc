@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eou pipefail
 
 # Set Global Variables
 export CONFIG="$(cat config.json | jq -r .)"
@@ -22,12 +23,13 @@ export RABBIT_MQ_PASSWD="$(echo $CONFIG | jq -r '.rabbit_mq_passwd')"
 export REDIS_PASSWD="$(echo $CONFIG | jq -r '.redis_passwd')"
 
 # Get the current user Object ID
-if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
-	# running in cloud-shell. We can use the information on ACC_OID
-	export CURRENT_USER_ID=$ACC_OID
-else
+# AZUREPS_HOST_ENVIRONMENT is only created inside of Cloud shell
+if [[ -z "${AZUREPS_HOST_ENVIRONMENT+x}" ]]; then
 	# running outside of cloud-shell. We need to retrieve the current user
 	export CURRENT_USER_ID=$(az ad signed-in-user show -o json| jq -r .id)
+elif [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
+	# running in cloud-shell. We can use the information on ACC_OID
+	export CURRENT_USER_ID=$ACC_OID
 fi
 
 

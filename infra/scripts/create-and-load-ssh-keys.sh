@@ -7,7 +7,7 @@ load_ssh_keys() {
 }
 
 # Check if the cleanup flag is passed, and ignore the ssh_key step
-if [[ ! -k $1 && $1 == "cleanup" ]]
+if [[ ${1+x} && $1 == "cleanup" ]]
 then
 	echo "Running cleanup. Don't generate ssh keys."
 else

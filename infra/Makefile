@@ -14,7 +14,7 @@ help :
 all : hubinfra configurehub createbranches
 
 hubinfra :
-	mkdir logs
+	mkdir -p logs
 	./scripts/create-hub-infra.sh 2>&1 | tee -a ./logs/hub-deployment.log
 
 configurehub : 
