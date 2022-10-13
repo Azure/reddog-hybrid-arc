@@ -55,8 +55,14 @@ check_for_cloud-shell() {
     # in cloud-shell, you need to do az login as a workaround before 
     # creating the service principal below. 
     #
-    # Only run this code when the user invokes run.sh from this directory. 
-    if [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
+    # Only run this code when the user invokes run.sh from this directory.
+    # AZUREPS_HOST_ENVIRONMENT is only created inside of Cloud shell
+    if [[ -z "${AZUREPS_HOST_ENVIRONMENT+x}" ]]; then
+	    # running outside of cloud-shell. We need to retrieve the current user
+	        # we are logged in at this point
+        AZURE_LOGIN=1
+        export AZURE_LOGIN
+    elif [[ $AZUREPS_HOST_ENVIRONMENT =~ ^cloud-shell.* ]]; then
         echo '****************************************************'
         echo ' Please login to Azure before proceeding.'
   	    echo '****************************************************'
@@ -66,13 +72,10 @@ check_for_cloud-shell() {
         echo ' reference: https://github.com/Azure/azure-cli/issues/11749#issuecomment-570975762'
         az login --scope https://graph.microsoft.com//.default
     fi
-    # we are logged in at this point
-    AZURE_LOGIN=1
-    export AZURE_LOGIN
 }
 
 # Execute commands on the remote jump box
-run_on_jumpbox () {
+run_on_jumpbox() {
     # Get the jump server public IP
     export JUMP_IP=$(cat ./outputs/$RG_NAME-bicep-outputs.json | jq -r .publicIP.value)
     ssh -p 2022 -o "StrictHostKeyChecking no" -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP $1
@@ -120,11 +123,15 @@ kv_init() {
         --certificate-permissions create get list \
         --upn $UPN
 
+    if [[ ! -f "$SSH_KEY_PATH/kv-$RG_NAME-cert.pfx" ]]; then
     az keyvault secret download \
         --vault-name $KV_NAME \
         --name $RG_NAME-cert \
         --encoding base64 \
-        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx  
+        --file $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx
+    else
+        echo "using cached $SSH_KEY_PATH/kv-$RG_NAME-cert.pfx file"
+    fi
 }
 
 kv_add_secrets() {
