@@ -173,6 +173,19 @@ create_branch() {
   # # Needed to temp fix the file permissions on the kubeconfig file - arc agent install checks the permissions and doesn't like previous 744
   # run_on_jumpbox "curl -sfL https://gist.githubusercontent.com/raykao/1b22f8a807eeda584137ac944c1ea2b9/raw/9d3bc2c52f268e202f708d0645b91f9fc768795e/get-kube-config.sh |CONTROL_HOST=$CONTROL_HOST_NAME sh -"
 
+  # Enable kubectl proxy for remote troubleshooting
+  echo "[branch: $BRANCH_NAME] - Enabling kubectl proxy for remote troubleshooting" | tee /dev/tty
+  run_on_jumpbox "echo \"kubectl proxy --address 0.0.0.0 --accept-hosts '.*'\" > /home/reddogadmin/kubectlproxy.sh"
+  run_on_jumpbox "chmod +x /home/reddogadmin/kubectlproxy.sh"
+  scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME ./scripts/kubectl-proxy.service $ADMIN_USER_NAME@$JUMP_IP:/home/reddogadmin/kubectl-proxy.service
+  run_on_jumpbox "sudo cp /home/reddogadmin/kubectl-proxy.service /etc/systemd/system/kubectl-proxy.service"
+  run_on_jumpbox "sudo systemctl enable kubectl-proxy"
+  run_on_jumpbox "sudo systemctl start kubectl-proxy"  
+  scp -P 2022 -i $SSH_KEY_PATH/$SSH_KEY_NAME $ADMIN_USER_NAME@$JUMP_IP:~/.kube/config ./logs/jumpbox-kubeconfig.yaml
+  pip3 install yq
+  cat ./logs/jumpbox-kubeconfig.yaml | yq ".clusters[0].cluster.server |= \"http://$JUMP_IP:8001\"" -y | yq ".contexts[0].name |= \"$RG_NAME\"" -y > ./logs/kubeconfig.yaml
+  echo "[branch: $BRANCH_NAME] - Use the config file /logs/kubeconfig.yaml to connect remotely via kubectl" | tee /dev/tty
+
   # Deploy initial cluster resources
   echo "[branch: $BRANCH_NAME] - Creating Namespaces ..." | tee /dev/tty
   # single quotes here to avoid variable expansion locally (ns) since we will be executing this on the jumpbox over ssh
@@ -240,7 +253,7 @@ create_branch() {
   SB_CONN=$(az servicebus namespace authorization-rule keys list -g $HUB_RG --namespace-name $PREFIX-hub-servicebus-$HUB_LOCATION -n "RootManageSharedAccessKey" --query "primaryConnectionString" -o tsv)
   MQ_CONN=amqp://contosoadmin:$RABBIT_MQ_PASSWD@rabbitmq.rabbitmq.svc.cluster.local:5672  
   az storage account create -n $FUNC_STOR_ACC -g $RG_NAME --sku Standard_LRS
-  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --functions-version 3 --custom-location $CUSTOM_LOC_ID --deployment-container-image-name https://ghcr.io/mikelapierre/reddog-code/reddog-retail-corp-transfer-service
+  az functionapp create -g $RG_NAME -p $APP_SVC_PLAN_NAME -n $FUNC_NAME -s $FUNC_STOR_ACC --functions-version 3 --custom-location $CUSTOM_LOC_ID --deployment-container-image-name https://ghcr.io/azure/reddog-retail-demo/reddog-retail-corp-transfer-service
   az functionapp config appsettings list -g $RG_NAME -n $FUNC_NAME > settings.json
   jq ". += [{\"name\": \"rabbitMQConnectionAppSetting\", \"value\": \"$MQ_CONN\", \"slotSetting\": false}, {\"name\": \"MyServiceBusConnection\", \"value\": \"$SB_CONN\", \"slotSetting\": false}]" settings.json > settings2.json
   az functionapp config appsettings set -g $RG_NAME -n $FUNC_NAME --settings @settings2.json
